@@ -75,7 +75,8 @@ metadata writes; this was an execution restriction, not an application failure.
 
 Commit `a90cb025`: `meta_data.PROGRAMNAME` changes from `MTGProxyPrinter` to
 `MTGProxyPrinter-Siser`, before settings imports. This also identifies the fork's
-logger, user agent, runtime titles, and PDF creator metadata. Document-format IDs,
+logger, user agent, selected UI text, and PDF creator metadata. The main window
+title remains unchanged. Document-format IDs,
 MIME IDs, import package `mtg_proxy_printer`, and serialization remain unchanged.
 Existing filenames within isolated storage remain unchanged.
 
@@ -145,8 +146,34 @@ It is not an untouched upstream baseline.
   the timed-out case. These numbers do not represent a single successful full
   suite run. A focused diagnostic of `tests/model/test_document.py` separately
   passed all 41 cases; these are already included in the counts above.
-- To reproduce the A4 diagnostic, select the failed node IDs and invoke pytest
-  after setting the default before test collection:
+- The historical A4 diagnostic selected 419 failed node IDs from the preceding
+  diagnostic log. It can be reproduced without that ignored local argument file
+  by selecting the four affected repository test files (this broader selection
+  also includes cases that originally passed):
+
+  ```powershell
+  $env:PATH = "$PWD\venv\Scripts;$env:PATH"
+  $env:QT_QPA_PLATFORM = 'offscreen'
+  @'
+  import mtg_proxy_printer.settings as settings
+  settings.DEFAULT_SETTINGS['documents']['paper-size'] = 'A4'
+  settings.settings.read_dict(settings.DEFAULT_SETTINGS)
+  import pytest
+  raise SystemExit(pytest.main([
+      'tests/model/test_page_layout_settings.py',
+      'tests/page_scene/test_page_scene.py',
+      'tests/ui/test_page_config_widget.py',
+      'tests/test_save_file_migrations.py',
+      '--timeout=30',
+  ]))
+  '@ | .\venv\Scripts\python.exe -
+  ```
+
+  To reconstruct the exact failed-case selection from a newly captured verbose
+  pytest log, use the lines beginning `FAILED tests/`, remove the leading
+  `FAILED ` and everything from the first ` - ` onwards, and write one node ID
+  per line. Pass that file as `@path/to/failed-nodeids.txt` to `pytest.main()`.
+  Historical invocation (requires that generated argument file):
 
   ```python
   import mtg_proxy_printer.settings as settings
