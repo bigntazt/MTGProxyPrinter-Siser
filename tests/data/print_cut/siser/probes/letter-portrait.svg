@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="215.9mm" height="279.4mm" viewBox="0 0 215.9 279.4">
+  <title>M02 Letter portrait coordinate probe</title>
+  <desc>One user unit equals one millimetre. Four asymmetric diagnostic contours; no registration marks or page border.</desc>
+  <rect id="rectangle" x="25" y="35" width="30" height="20" fill="black"/>
+  <circle id="circle" cx="110" cy="80" r="7" fill="black"/>
+  <polygon id="triangle" points="65,150 90,150 65,175" fill="black"/>
+  <polygon id="ell" points="145,190 169,190 169,196 152,196 152,208 145,208" fill="black"/>
+</svg>

@@ -1,0 +1,777 @@
+{
+  "milestone": "M02",
+  "status": "prepared_manual_acquisition_pending",
+  "recorded_date": "2026-10-05",
+  "accepted_m01_sha": "014156d9c4dfc16fe67e443220443c1db239d12b",
+  "coordinate_convention": "millimetres; top-left origin; x right, y down; geometric bounds, no stroke",
+  "local_environment": {
+    "os": "Windows NT 10.0.22631.0",
+    "installed_registry_version": "1.1.31",
+    "executable_file_version": "1.1.0.31",
+    "leonardo_about_version": null,
+    "edition": null,
+    "interaction": "Computer-use launch returned no targetable window; follow-up list_windows found no Leonardo window",
+    "both_profiles_selectable": null,
+    "native_save_format": null,
+    "print_export_mechanisms_observed": null,
+    "user_reported_version": "1.1.31"
+  },
+  "sources": [
+    {
+      "id": "manual",
+      "url": "https://fcl.software/lds/manual/LDS_Manual_EN_1.1.8.pdf",
+      "edition": "1.1.8 English manual, 2023",
+      "accessed": "2026-10-05"
+    },
+    {
+      "id": "features",
+      "url": "https://www.siser.com/leonardo-design-studio/",
+      "accessed": "2026-10-05"
+    },
+    {
+      "id": "romeo",
+      "url": "https://www.siser.com/cutter/romeo/",
+      "accessed": "2026-10-05"
+    },
+    {
+      "id": "svg",
+      "url": "https://www.w3.org/TR/SVG2/coords.html",
+      "accessed": "2026-10-05"
+    },
+    {
+      "id": "units",
+      "url": "https://www.w3.org/TR/css-values-4/#absolute-lengths",
+      "accessed": "2026-10-05"
+    }
+  ],
+  "cases": [
+    {
+      "id": "letter-portrait",
+      "probe": {
+        "path": "probes/letter-portrait.svg",
+        "sha256": "d86c5841df290212b694698e465574b4a62e2ce8d7294f800f4d974fe53eab44"
+      },
+      "expected": {
+        "page_mm": [
+          215.9,
+          279.4
+        ],
+        "orientation": "portrait",
+        "occupied_bounds_mm": [
+          25,
+          35,
+          169,
+          208
+        ],
+        "shapes": {
+          "rectangle": {
+            "kind": "rect",
+            "xywh_mm": [
+              25,
+              35,
+              30,
+              20
+            ]
+          },
+          "circle": {
+            "kind": "circle",
+            "center_mm": [
+              110,
+              80
+            ],
+            "radius_mm": 7
+          },
+          "triangle": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                65,
+                150
+              ],
+              [
+                90,
+                150
+              ],
+              [
+                65,
+                175
+              ]
+            ]
+          },
+          "ell": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                145,
+                190
+              ],
+              [
+                169,
+                190
+              ],
+              [
+                169,
+                196
+              ],
+              [
+                152,
+                196
+              ],
+              [
+                152,
+                208
+              ],
+              [
+                145,
+                208
+              ]
+            ]
+          }
+        }
+      },
+      "probe_validation": "passed_xml_geometry_hash_checks",
+      "reference_runs": [
+        {
+          "id": "letter-portrait-juliet-page_marks",
+          "requested_profile": "Juliet",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-juliet-artwork_spacing",
+          "requested_profile": "Juliet",
+          "requested_mark_mode": "artwork_spacing",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-romeo-page_marks",
+          "requested_profile": "Romeo",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-romeo-artwork_spacing",
+          "requested_profile": "Romeo",
+          "requested_mark_mode": "artwork_spacing",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "letter-portrait-shifted",
+      "probe": {
+        "path": "probes/letter-portrait-shifted.svg",
+        "sha256": "4845856460ed3d8e510c4a52a2dca90a6776c7327a02e68614debbf9563860c5"
+      },
+      "expected": {
+        "page_mm": [
+          215.9,
+          279.4
+        ],
+        "orientation": "portrait",
+        "occupied_bounds_mm": [
+          37,
+          44,
+          181,
+          217
+        ],
+        "shapes": {
+          "rectangle": {
+            "kind": "rect",
+            "xywh_mm": [
+              37,
+              44,
+              30,
+              20
+            ]
+          },
+          "circle": {
+            "kind": "circle",
+            "center_mm": [
+              122,
+              89
+            ],
+            "radius_mm": 7
+          },
+          "triangle": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                77,
+                159
+              ],
+              [
+                102,
+                159
+              ],
+              [
+                77,
+                184
+              ]
+            ]
+          },
+          "ell": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                157,
+                199
+              ],
+              [
+                181,
+                199
+              ],
+              [
+                181,
+                205
+              ],
+              [
+                164,
+                205
+              ],
+              [
+                164,
+                217
+              ],
+              [
+                157,
+                217
+              ]
+            ]
+          }
+        }
+      },
+      "probe_validation": "passed_xml_geometry_hash_checks",
+      "reference_runs": [
+        {
+          "id": "letter-portrait-shifted-juliet-page_marks",
+          "requested_profile": "Juliet",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-shifted-juliet-artwork_spacing",
+          "requested_profile": "Juliet",
+          "requested_mark_mode": "artwork_spacing",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-shifted-romeo-page_marks",
+          "requested_profile": "Romeo",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "letter-portrait-shifted-romeo-artwork_spacing",
+          "requested_profile": "Romeo",
+          "requested_mark_mode": "artwork_spacing",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "a4-landscape",
+      "probe": {
+        "path": "probes/a4-landscape.svg",
+        "sha256": "f99d669c0a9fecbd08815b7ffc9312b4ca0bc94588876bdfa7b4f7930f3db860"
+      },
+      "expected": {
+        "page_mm": [
+          297,
+          210
+        ],
+        "orientation": "landscape",
+        "occupied_bounds_mm": [
+          35,
+          25,
+          254,
+          163
+        ],
+        "shapes": {
+          "rectangle": {
+            "kind": "rect",
+            "xywh_mm": [
+              35,
+              25,
+              30,
+              20
+            ]
+          },
+          "circle": {
+            "kind": "circle",
+            "center_mm": [
+              160,
+              70
+            ],
+            "radius_mm": 7
+          },
+          "triangle": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                95,
+                120
+              ],
+              [
+                120,
+                120
+              ],
+              [
+                95,
+                145
+              ]
+            ]
+          },
+          "ell": {
+            "kind": "polygon",
+            "vertices_mm": [
+              [
+                230,
+                145
+              ],
+              [
+                254,
+                145
+              ],
+              [
+                254,
+                151
+              ],
+              [
+                237,
+                151
+              ],
+              [
+                237,
+                163
+              ],
+              [
+                230,
+                163
+              ]
+            ]
+          }
+        }
+      },
+      "probe_validation": "passed_xml_geometry_hash_checks",
+      "reference_runs": [
+        {
+          "id": "a4-landscape-juliet-page_marks",
+          "requested_profile": "Juliet",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        },
+        {
+          "id": "a4-landscape-romeo-page_marks",
+          "requested_profile": "Romeo",
+          "requested_mark_mode": "page_marks",
+          "status": "pending_acquisition",
+          "observed_settings": null,
+          "native_project": {
+            "path": null,
+            "sha256": null
+          },
+          "print_output": {
+            "path": null,
+            "sha256": null
+          },
+          "settings_record": {
+            "path": null,
+            "sha256": null
+          },
+          "screenshots": [],
+          "import_checks": {
+            "declared_page_extent_preserved": null,
+            "shape_dimensions_preserved": null,
+            "relative_distances_preserved": null,
+            "absolute_positions_preserved": null,
+            "orientation_preserved": null,
+            "contours_match_printed_registration": null
+          },
+          "measurements": {
+            "pdf_page_boxes_pt": null,
+            "pdf_rotation_degrees": null,
+            "pdf_user_unit": null,
+            "content_transforms": null,
+            "marks": null,
+            "registration_anchors": null,
+            "exclusion_areas": null,
+            "shape_positions_mm": null,
+            "shape_dimensions_mm": null
+          }
+        }
+      ]
+    }
+  ],
+  "initial_reference_outputs": [
+    {
+      "id": "initial-a4-landscape",
+      "probe_candidate": "a4-landscape",
+      "received_label": "probes/Probe Marks Enabled/Mark-A4-Landscape.pdf",
+      "status": "measured_output_settings_pending",
+      "print_output": {
+        "path": "references/initial-a4-landscape/Mark-A4-Landscape.pdf",
+        "sha256": "906238362e87e42cb4282a708397084ee7685ce9f65b14239dcf087c90ca77be"
+      },
+      "native_project": {
+        "path": null,
+        "sha256": null
+      },
+      "settings_record": {
+        "path": null,
+        "sha256": null
+      },
+      "observed_settings": null,
+      "measurement_record": null
+    },
+    {
+      "id": "initial-letter-portrait-shifted",
+      "probe_candidate": "letter-portrait-shifted",
+      "received_label": "probes/Probe Marks Enabled/Mark-Letter-Portrait-Shifted.pdf",
+      "status": "measured_output_settings_pending",
+      "print_output": {
+        "path": "references/initial-letter-portrait-shifted/Mark-Letter-Portrait-Shifted.pdf",
+        "sha256": "23be58353557877e30e4554db7014ca8c959f0e2f48ea65ad19c8a6fb666ed77"
+      },
+      "native_project": {
+        "path": null,
+        "sha256": null
+      },
+      "settings_record": {
+        "path": null,
+        "sha256": null
+      },
+      "observed_settings": null,
+      "measurement_record": null
+    },
+    {
+      "id": "initial-letter-portrait",
+      "probe_candidate": "letter-portrait",
+      "received_label": "probes/Probe Marks Enabled/Mark-Letter-Portrait.pdf",
+      "status": "measured_output_settings_pending",
+      "print_output": {
+        "path": "references/initial-letter-portrait/Mark-Letter-Portrait.pdf",
+        "sha256": "96d1c1fcf8f503b1de06e0ef291c080d221385c9282c1d745fe823e6de859ccb"
+      },
+      "native_project": {
+        "path": null,
+        "sha256": null
+      },
+      "settings_record": {
+        "path": null,
+        "sha256": null
+      },
+      "observed_settings": null,
+      "measurement_record": null
+    }
+  ],
+  "user_reported_settings": {
+    "spacing_display": 0.492,
+    "spacing_unit": "inches",
+    "spacing_mm": 12.4968,
+    "spacing_context": "User changed custom spacing at one point; smallest accepted in this setup; not attributed to individual outputs",
+    "owned_cutter": "Siser Juliet",
+    "selected_software_profile": null,
+    "edition": null,
+    "output_route": "Leonardo Export tool",
+    "small_page_margins": "User reports not enabled on printer; Leonardo preference unconfirmed"
+  },
+  "measurement_record": "initial-measurements.json"
+}

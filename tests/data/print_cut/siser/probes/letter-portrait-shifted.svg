@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="215.9mm" height="279.4mm" viewBox="0 0 215.9 279.4">
+  <title>M02 Letter portrait shifted coordinate probe</title>
+  <desc>Same page and shape dimensions as letter-portrait.svg; every contour is shifted right 12 mm and down 9 mm. No registration marks or page border.</desc>
+  <rect id="rectangle" x="37" y="44" width="30" height="20" fill="black"/>
+  <circle id="circle" cx="122" cy="89" r="7" fill="black"/>
+  <polygon id="triangle" points="77,159 102,159 77,184" fill="black"/>
+  <polygon id="ell" points="157,199 181,199 181,205 164,205 164,217 157,217" fill="black"/>
+</svg>
