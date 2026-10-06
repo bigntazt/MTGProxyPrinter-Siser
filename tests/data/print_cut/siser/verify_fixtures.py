@@ -31,6 +31,8 @@ def verify():
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
     all_shapes = {}
     reference_count = 0
+    for artifact in manifest.get("screenshots", []):
+        reference_count += check_artifact(artifact)
     for reference in manifest.get("initial_reference_outputs", []):
         reference_count += check_artifact(reference["print_output"])
         reference_count += check_artifact(reference["native_project"])

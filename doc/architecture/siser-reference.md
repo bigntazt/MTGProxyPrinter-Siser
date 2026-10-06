@@ -1,8 +1,8 @@
 # M02: Leonardo reference and SVG import evidence
 
-**Status: Prepared; manual acquisition pending.** Recorded 2026-10-05,
+**Status: Complete — negative workflow finding; M08 registration gate remains.** Recorded 2026-10-05,
 America/Los_Angeles. Six user-exported PDFs have been preserved and measured.
-Native projects and controlled import/settings evidence remain pending. These
+Three native .lds projects and two settings screenshots are preserved. These
 measurements do not establish a general registration specification.
 Measured Siser registration support remains gated before M08.
 
@@ -195,9 +195,36 @@ same y coordinates. Thus the marks move inward relative to the page-mark
 captures, and barely move between the base and shifted exports. This is
 consistent with marks surrounding nearly coincident artwork, but does not prove
 translation behavior when Leonardo preserves the intended source coordinates.
-“Custom Mark Off” is a received filename, not verified UI state; whether it
-means Page Marks disabled or another control, and the per-file spacing value,
-remain unconfirmed. Do not interpret these as registration-free PDFs.
+The user identifies “Custom Mark Off” as custom spacing disabled; the exact
+per-file numerical spacing remains unconfirmed. Do not interpret these as registration-free PDFs.
+
+## Native projects, settings, and confirmed acquisition workflow
+
+Three .lds files are preserved beside their corresponding base Letter, revised
+shifted Letter, and A4 PDFs. SHA-256 digests are in the manifest. Each is a ZIP
+container with CDOC binary data and a PREVIEW entry. The internal geometry was
+not decoded, and these files were not opened/reopened by the agent. No project
+files were supplied for the two custom-spacing-disabled outputs.
+
+Two preserved screenshots show Page Marks enabled, Print and Cut enabled, and a
+disabled Mark Spacing field displaying 0.492 in. Letter settings show 8.500 ×
+11.000 in and printer portrait; A4 settings show 11.692 × 8.267 in and printer
+landscape. The printer shown is Epson ET-8550. The screenshots do not establish
+edition, selected cutter profile, Small Page Margins preference, export scaling,
+or native object dimensions.
+
+The user confirms dragging and dropping each SVG, selecting Print and Cut,
+and neither resizing nor repositioning. The user also clarifies that the toggle
+changes custom spacing, while registration marks remain required for Print and
+Cut. Accordingly, the two “Custom Mark Off” outputs are interpreted as custom
+spacing disabled, not registration disabled. Their filenames remain unchanged.
+
+**Decision supported by available evidence:** the supplied drag-and-drop Print
+and Cut → Leonardo Export sequence does not preserve the intended physical size
+and absolute page placement in its exported PDFs. This is a reproducible negative
+result across the provided probes, not a claim that every Leonardo workflow fails.
+The responsible stage remains unknown; no compensation constants are justified.
+Native saves and settings are preserved for a later targeted investigation.
 
 ## Import proof and workflow decision
 
@@ -248,5 +275,8 @@ Follow the fixture README's five-sheet procedure for the available profile;
 repeat for the other profile if selectable. Return native saves, uncropped PDFs,
 settings records/screenshots, and import/save-reopen observations. Edition, selected software profile,
 custom-size constraints, and import/save-reopen behavior need confirmation. Output
-geometry is recorded separately from the still-null controlled-run observations. Until then M02
-remains prepared, not complete; M08 geometry remains gated. Do not begin M03.
+geometry is recorded separately from the still-null controlled-run observations. M02 is complete as an evidence-backed negative workflow decision. M08 geometry
+remains gated on an independently demonstrated size/placement-preserving workflow.
+Save/reopen checks, native dimension inspection, Romeo comparison, and external
+mark handling were not performed. No further user files are required for this
+M02 handoff. Do not begin M03.

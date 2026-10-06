@@ -2,8 +2,9 @@
 
 These are diagnostic probes, not a production cut template. There are no Siser
 marks or page-border paths. Six PDFs, including the revised shifted and custom-off captures, are preserved in `references/`, with measurements in
-`initial-measurements.json`. Native projects and controlled import results remain
-pending; planned-run observations in `manifest.json` are null. See the
+`initial-measurements.json`. Three native projects and two settings screenshots are also preserved. M02 is
+complete with a negative workflow finding; unperformed planned-run observations
+remain null. The acquisition procedure below is retained for future investigation. See the
 [evidence report](../../../../doc/architecture/siser-reference.md) for sources,
 classifications, measurement plans, and the workflow gate.
 

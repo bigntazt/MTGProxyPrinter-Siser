@@ -1,6 +1,6 @@
 {
   "milestone": "M02",
-  "status": "prepared_manual_acquisition_pending",
+  "status": "complete_negative_workflow_finding",
   "recorded_date": "2026-10-05",
   "accepted_m01_sha": "014156d9c4dfc16fe67e443220443c1db239d12b",
   "coordinate_convention": "millimetres; top-left origin; x right, y down; geometric bounds, no stroke",
@@ -12,7 +12,7 @@
     "edition": null,
     "interaction": "Computer-use launch returned no targetable window; follow-up list_windows found no Leonardo window",
     "both_profiles_selectable": null,
-    "native_save_format": null,
+    "native_save_format": ".lds; ZIP container with CDOC binary and PREVIEW entries; internal geometry not decoded",
     "print_export_mechanisms_observed": null,
     "user_reported_version": "1.1.31"
   },
@@ -711,8 +711,8 @@
         "sha256": "906238362e87e42cb4282a708397084ee7685ce9f65b14239dcf087c90ca77be"
       },
       "native_project": {
-        "path": null,
-        "sha256": null
+        "path": "references/initial-a4-landscape/Mark-A4-Landscape.lds",
+        "sha256": "484cb06b3721ee0dbef8201ffe2382ca25fa37490df5b2d9e6494aca674a7a84"
       },
       "settings_record": {
         "path": null,
@@ -751,8 +751,8 @@
         "sha256": "96d1c1fcf8f503b1de06e0ef291c080d221385c9282c1d745fe823e6de859ccb"
       },
       "native_project": {
-        "path": null,
-        "sha256": null
+        "path": "references/initial-letter-portrait/Mark-Letter-Portrait.lds",
+        "sha256": "5ccb9a20d1764d1cb44bdf859bf8cca303fc72fe7bf0575362971812f9679c3d"
       },
       "settings_record": {
         "path": null,
@@ -771,8 +771,8 @@
         "sha256": "b7a91ca36cdd52d9b38b8d364edba49795986251c01bd1e954fd996cff9abe1e"
       },
       "native_project": {
-        "path": null,
-        "sha256": null
+        "path": "references/revised-letter-portrait-shifted/Mark-Letter-Portrait-Shifted.lds",
+        "sha256": "b709f6eacbba4b3eb10e5312cec16cc2a599b5c21fada08a72762c3f92cb8569"
       },
       "settings_record": {
         "path": null,
@@ -831,7 +831,47 @@
     "selected_software_profile": null,
     "edition": null,
     "output_route": "Leonardo Export tool",
-    "small_page_margins": "User reports not enabled on printer; Leonardo preference unconfirmed"
+    "small_page_margins": "User reports not enabled on printer; Leonardo preference unconfirmed",
+    "import_method": "Drag and drop SVG; Print and Cut selected",
+    "resized": false,
+    "repositioned": false,
+    "custom_spacing_toggle": "Changes custom spacing; Print and Cut retains registration marks"
   },
-  "measurement_record": "initial-measurements.json"
+  "measurement_record": "initial-measurements.json",
+  "screenshots": [
+    {
+      "path": "references/settings/Letter Settings.png",
+      "sha256": "f1e944c0a814f829db1f2e76af995013b1d60b3833a4a4c0e605322e8b14600c"
+    },
+    {
+      "path": "references/settings/A4 Settings.png",
+      "sha256": "5b33cdefd07d855cfd08366a7aee8335ab1d47ffbde192e5ad670f73e306b69f"
+    }
+  ],
+  "screenshot_observations": {
+    "letter": {
+      "page_inches": [
+        8.5,
+        11
+      ],
+      "orientation": "portrait",
+      "page_marks": true,
+      "print_and_cut": true,
+      "mark_spacing_display": "0.492 in, disabled field"
+    },
+    "a4": {
+      "page_inches": [
+        11.692,
+        8.267
+      ],
+      "orientation": "landscape",
+      "page_marks": true,
+      "print_and_cut": true,
+      "mark_spacing_display": "0.492 in, disabled field"
+    },
+    "printer": "Epson ET-8550",
+    "small_page_margins": null,
+    "selected_cutter_profile": null,
+    "edition": null
+  }
 }
