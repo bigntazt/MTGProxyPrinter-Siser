@@ -1,7 +1,7 @@
 # M02: Leonardo reference and SVG import evidence
 
 **Status: Prepared; manual acquisition pending.** Recorded 2026-10-05,
-America/Los_Angeles. Three user-exported PDFs have been preserved and measured.
+America/Los_Angeles. Six user-exported PDFs have been preserved and measured.
 Native projects and controlled import/settings evidence remain pending. These
 measurements do not establish a general registration specification.
 Measured Siser registration support remains gated before M08.
@@ -137,7 +137,7 @@ not current findings; screenshots alone cannot settle the physical coordinates.
 
 ## Initial output observations (partial evidence)
 
-Three byte-identical snapshots are preserved under `references/initial-*`; their
+Six byte-identical snapshots are preserved under `references/`; their
 SHA-256 digests and received filenames are in `manifest.json`. Reproduce the
 measurements with `measure_initial_outputs.py` using a PDF runtime containing
 pypdf, pdfplumber, Pillow, and numpy. `initial-measurements.json` records tool
@@ -172,6 +172,32 @@ software profile, edition, per-output mark setting, save/reopen preservation,
 contour correspondence, exclusion limits, and camera anchors. The reported .492
 inch value is an observed user setting, not a universal minimum. No conclusion
 about Juliet/Romeo equivalence or printed-sheet alignment follows from these PDFs.
+
+## Revised shifted and custom-off captures
+
+The user supplied a replacement shifted Letter export and two files labelled
+“Custom Mark Off”. These are preserved as separate hashed snapshots; the earlier
+mixed-artwork capture remains available as historical evidence.
+
+**Observed:** the revised shifted export contains one raster artwork image.
+Its rectangle begins at approximately (44.5835, 63.5380) mm, compared with
+(44.5766, 63.4773) mm in the base export: only (+0.0068, +0.0607) mm, within
+raster measurement uncertainty, instead of the source translation (+12, +9) mm.
+Page-relative marks match between these two captures. This provides evidence
+that this export sequence did not preserve absolute source placement; the
+responsible import/placement/export step remains unknown without native projects.
+
+Both custom-off captures still contain eight filled rectangular mark bars.
+Their artwork image placements match the corresponding page-mark captures.
+The base top-left horizontal mark spans approximately x=32.0712–45.0712 mm,
+y=50.5000–51.5000 mm; the shifted capture spans x=32.0096–45.0096 mm at the
+same y coordinates. Thus the marks move inward relative to the page-mark
+captures, and barely move between the base and shifted exports. This is
+consistent with marks surrounding nearly coincident artwork, but does not prove
+translation behavior when Leonardo preserves the intended source coordinates.
+“Custom Mark Off” is a received filename, not verified UI state; whether it
+means Page Marks disabled or another control, and the per-file spacing value,
+remain unconfirmed. Do not interpret these as registration-free PDFs.
 
 ## Import proof and workflow decision
 
@@ -213,7 +239,7 @@ No physical printer/cutter operation is required or was performed in M02.
 
 `venv\Scripts\python.exe tests/data/print_cut/siser/verify_fixtures.py` passes:
 three parsed SVGs, page/shape coordinates, fixed translation, manifest hashes,
-safe paths, and unit round-trips. It verifies **three acquired PDF reference artifacts**.
+safe paths, and unit round-trips. It verifies **six acquired PDF reference artifacts**.
 Probe line endings are pinned to LF to preserve hashes across Windows checkouts.
 No full application suite was run. The diff is limited to documentation and
 small reference fixtures/validation; production layout/export/settings are unchanged.
