@@ -12,7 +12,9 @@ Accepted M01 `014156d9c4dfc16fe67e443220443c1db239d12b` was verified against
 `origin/milestone/m01-bootstrap`, fast-forwarded into `siser-dev`, and pushed.
 M02 is on `milestone/m02-leonardo-reference`, based on that accepted commit.
 `trunk` remains at `00202f988bef071c7070967e86c1490cb19114ba`.
-M02 is not merged into `siser-dev`.
+At the M02 handoff it was not merged. For M03, accepted M02
+`74a83e9e6fe1d090ef8d2cfaec0ff98c8d8ebcae` was fast-forwarded into
+`siser-dev` and pushed; M03 work remains on its separate milestone branch.
 
 The baseline now says logger, user agent, selected UI text, and PDF creator
 metadata; the main window title remains unchanged. Its A4 diagnostic now has
@@ -33,12 +35,13 @@ The existing Python environment and fork storage isolation were preserved.
 | Edition / selected software profile | Unknown; user owns a Siser Juliet |
 | Juliet/Romeo profile selection | Neither observed; availability/equivalence unknown |
 | Custom spacing | User reports .492 inches (12.4968 mm), smallest accepted in their setup; which outputs used it is unknown |
-| Output route | User reports Leonardo Export tool; native save remains pending |
+| Output route | User reports Leonardo Export tool; three .lds saves acquired, internal dimensions and save/reopen unverified |
 | Small Page Margins | User reports disabled on printer; Leonardo preference remains unconfirmed |
 
 This establishes installed software and an interaction limitation, not that the
 software is broken. No installation, trial, account change, purchase, or support
-contact was attempted. Reference acquisition therefore requires manual operation.
+contact was attempted. Reference acquisition was performed manually by the user; the agent inspected
+provided files and screenshots rather than directly operating the imports.
 
 ## Authoritative documented evidence
 
@@ -146,7 +149,7 @@ Original incoming files are preserved separately and are not rewritten.
 
 **Observed in exported PDFs:** Letter pages measure 215.9 × 279.4 mm. A4 is
 landscape, approximately 296.9683 × 209.9733 mm, reflecting its PDF point dimensions.
-All three are unrotated with default UserUnit 1. Each has eight filled, unstroked
+All six are unrotated with default UserUnit 1. Each has eight filled, unstroked
 rectangles forming four corner L marks. Letter bars measure approximately
 13 × 1 mm; the top-left union spans (5.5, 5.5) to (19, 19) mm. Geometric bar
 intersections are not proven camera anchors. The JSON records A4 bars individually.
@@ -159,15 +162,15 @@ use dark pixels below grayscale 128, with roughly 0.123 mm pixel pitch; they are
 approximate painted bounds, not measurements of native cut contours. A4 artwork
 also differs from the declared source size and placement.
 
-The shifted Letter capture contains two raster images, including the original
+The historical initial shifted Letter capture contains two raster images, including the original
 artwork and the shifted artwork. It therefore cannot establish how a single
-import's translation affects registration. Acquire each comparison in a fresh
-blank project. The observed discrepancies warrant investigating import, resizing,
+import's translation affects registration. The revised comparison was acquired separately. The observed discrepancies warrant investigating import, resizing,
 placement, and export settings; their cause is **unknown**, not an established
 Leonardo import rule. The user reports custom spacing was changed at one point,
 so spacing cannot yet be assigned to a particular captured PDF.
 
-**Unknown:** actual import mode, native shape dimensions/positions, selected
+**User-reported import mode:** drag-and-drop, Print and Cut, without resizing or repositioning.
+**Unknown:** native shape dimensions/positions, selected
 software profile, edition, per-output mark setting, save/reopen preservation,
 contour correspondence, exclusion limits, and camera anchors. The reported .492
 inch value is an observed user setting, not a universal minimum. No conclusion
@@ -185,7 +188,7 @@ Its rectangle begins at approximately (44.5835, 63.5380) mm, compared with
 raster measurement uncertainty, instead of the source translation (+12, +9) mm.
 Page-relative marks match between these two captures. This provides evidence
 that this export sequence did not preserve absolute source placement; the
-responsible import/placement/export step remains unknown without native projects.
+responsible import/placement/export step remains unknown despite the acquired native projects, whose internal dimensions are unverified.
 
 Both custom-off captures still contain eight filled rectangular mark bars.
 Their artwork image placements match the corresponding page-mark captures.
@@ -266,17 +269,17 @@ No physical printer/cutter operation is required or was performed in M02.
 
 `venv\Scripts\python.exe tests/data/print_cut/siser/verify_fixtures.py` passes:
 three parsed SVGs, page/shape coordinates, fixed translation, manifest hashes,
-safe paths, and unit round-trips. It verifies **six acquired PDF reference artifacts**.
+safe paths, and unit round-trips. It verifies **11 acquired artifacts: six PDFs, three native projects, and two screenshots**.
 Probe line endings are pinned to LF to preserve hashes across Windows checkouts.
 No full application suite was run. The diff is limited to documentation and
 small reference fixtures/validation; production layout/export/settings are unchanged.
 
-Follow the fixture README's five-sheet procedure for the available profile;
-repeat for the other profile if selectable. Return native saves, uncropped PDFs,
-settings records/screenshots, and import/save-reopen observations. Edition, selected software profile,
+The fixture README retains the acquisition procedure for future investigation.
+No acquisition is requested during M03. Three native projects are acquired;
+internal dimensions and save/reopen behavior remain unverified. Edition, selected software profile,
 custom-size constraints, and import/save-reopen behavior need confirmation. Output
 geometry is recorded separately from the still-null controlled-run observations. M02 is complete as an evidence-backed negative workflow decision. M08 geometry
 remains gated on an independently demonstrated size/placement-preserving workflow.
 Save/reopen checks, native dimension inspection, Romeo comparison, and external
 mark handling were not performed. No further user files are required for this
-M02 handoff. Do not begin M03.
+M02 handoff. M03 is authorized separately and does not reopen this investigation.
