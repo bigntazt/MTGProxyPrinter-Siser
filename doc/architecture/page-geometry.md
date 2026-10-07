@@ -130,11 +130,12 @@ Production bleed updates use named top/bottom/left/right arguments.
 Tiny positive spacing rounded to zero now produces the approved unique shared
 edges without the old extra/duplicate guide.
 
-## Presentation after M05; native transforms retained for M06
+## Presentation after M06; legacy modes retained
 
-Cards and guides use zero X offset for ON_SCREEN or FILE_EXPORT; native ON_PAPER
-retains the configured printer offset and rounded left/top subtraction for
-IMPLICIT_MARGINS. PDF/PNG use ON_PAPER | FILE_EXPORT without implicit margins.
+Cards and guides use zero X offset for ON_SCREEN, FILE_EXPORT, or NATIVE_PRINT.
+Active native scenes use ON_PAPER | NATIVE_PRINT without implicit margins; PDF/PNG
+use ON_PAPER | FILE_EXPORT. Legacy bare ON_PAPER retains its configured scene
+offset and IMPLICIT_MARGINS retains rounded application-margin subtraction.
 Vertical guide caches omit X offset; drawing adds it exactly once. Full scene
 extent uses snapshot rounded dimensions. Implicit extent still subtracts physical
 margins before rounding; it is not the difference of rounded pixel quantities.
@@ -146,12 +147,15 @@ subtraction. No Siser marks or profiles are added.
 
 Labels retain the greater final regular/oversized horizontal guide edge plus
 rounded full bleed and two units. Title/page-number X uses regular guides; the
-title has no printer X offset, while the page number does. Wrapping is unchanged.
+title has no legacy scene X offset, while the page number does. M06 applies its
+printer correction once to the entire native scene, including title and labels.
+Wrapping is unchanged.
 Unavailable grids hide dependent labels. M05 PDF/PNG now map the actual snapshot
 physical sheet rectangle with explicit DPI scaling and a pure optional PDF
 quarter-turn. See [export-geometry.md](export-geometry.md) for measurements and
-rounding/clipping boundaries. Native printer transforms remain for M06;
-registration profiles and physical alignment remain later work.
+rounding/clipping boundaries. M06 native origin, correction, clipping, DPI, and
+rotation are documented in [native-print-geometry.md](native-print-geometry.md).
+Registration profiles and physical alignment remain later work; M07 is not started.
 
 ## Historical M03 validation
 

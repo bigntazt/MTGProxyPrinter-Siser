@@ -196,3 +196,13 @@ and native landscape behavior; these paths are unchanged. SVG, Siser registratio
 profiles, Leonardo numeric placement, and M08 remain pending. No reference
 acquisition/reinterpretation or hardware qualification is included. User incoming
 references and unrelated Memtrace state are preserved.
+
+## M06 adoption
+
+Accepted M05 was subsequently integrated into siser-dev. Its export wrapper now
+delegates to the narrowly generalized _render_page with equal DPI and zero native
+origin/correction, preserving all measured PDF/PNG invariants. Active native
+scenes use NATIVE_PRINT and the accepted printer mapping described in
+[native-print-geometry.md](native-print-geometry.md). Legacy bare ON_PAPER and
+IMPLICIT_MARGINS still retain their earlier behavior. M07 is not started;
+Leonardo numeric placement and M08 remain pending.
