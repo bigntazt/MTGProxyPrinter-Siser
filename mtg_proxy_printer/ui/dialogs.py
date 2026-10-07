@@ -120,7 +120,11 @@ class SavePDFDialog(QFileDialog):
     def on_accept(self):
         logger.debug("User chose a file name, about to generate the PDF document")
         path = self.selectedFiles()[0]
-        mtg_proxy_printer.print.export_pdf(self.document, path, self)
+        try:
+            mtg_proxy_printer.print.export_pdf(self.document, path, self)
+        except RuntimeError as error:
+            self.parent().on_error_occurred(str(error))
+            return
         self.request_run_async_task.emit(PrintCountUpdater(self.document))
         logger.info(f"Saved document to {path}")
 

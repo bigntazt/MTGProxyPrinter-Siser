@@ -55,6 +55,7 @@ def check_scene(scene, expected_rows=None):
 
 @pytest.mark.parametrize("mode", [RenderMode.ON_SCREEN, RenderMode.ON_PAPER,
                                  RenderMode.ON_SCREEN | RenderMode.IMPLICIT_MARGINS,
+                                 RenderMode.ON_PAPER | RenderMode.FILE_EXPORT,
                                  RenderMode.ON_PAPER | RenderMode.IMPLICIT_MARGINS])
 def test_fractional_margins_offsets_labels_and_registration(scene_document, mode):
     d = scene_document
@@ -66,7 +67,7 @@ def test_fractional_margins_offsets_labels_and_registration(scene_document, mode
         scene = PageScene(d, mode)
         d.apply(ActionAddCard(create_card_with_pixmap("Cyan", color=QColorConstants.Cyan), 4))
         check_scene(scene)
-        assert scene.x_offset == (0 if RenderMode.ON_SCREEN in mode else 24)
+        assert scene.x_offset == (0 if mode & (RenderMode.ON_SCREEN | RenderMode.FILE_EXPORT) else 24)
         expected_width = 2479 if RenderMode.IMPLICIT_MARGINS in mode else 2480
         assert scene.width() == expected_width  # subtraction precedes rounding for implicit extent
         frame = scene.geometry.margin_frame_px
