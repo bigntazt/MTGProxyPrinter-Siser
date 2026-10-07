@@ -347,11 +347,11 @@ class PageScene(QGraphicsScene):
         for root in self.print_markers:
             parent = root.parentItem()
             if parent is None:
-                self.addItem(root)  # Restore scene ownership after the binding's parentItem() policy.
+                root.scene()  # Restore PySide scene ownership without another C++ insertion.
             for guide in guides:
                 guide_parent = guide.parentItem()
                 if guide_parent is None:
-                    self.addItem(guide)
+                    guide.scene()
                 if parent == guide_parent and root.zValue() == guide.zValue():
                     root.stackBefore(guide)
                     break

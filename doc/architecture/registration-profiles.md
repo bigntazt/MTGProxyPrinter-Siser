@@ -88,10 +88,14 @@ An observed PySide6 6.11.2 ownership pitfall required a small local safeguard:
 from false to true. Dropping that temporary wrapper can delete the item. This was
 reproduced with a scene containing a single line and also caused missing cards/guides
 in initial regressions. The ancestry precheck avoids unrelated parentless card roots;
-stacking reasserts scene ownership with `addItem()` after parentless parent lookups.
-Adding an item already in the same scene preserves its placement/stacking. Regression
-checks assert card and guide retention, and independent pixel comparisons verify the
-final same-Z order. No general Qt ownership framework or card-lifetime redesign is added.
+stacking reasserts scene ownership with `scene()` after parentless parent lookups.
+The returned scene reparents the Python wrapper without another C++ scene insertion.
+Descendant wrappers are not unnecessarily reparented. The originally submitted M07
+used duplicate `addItem()` calls: these repaired wrapper ownership but Qt rejected
+the duplicate insertion and emitted warnings. The follow-up replaces those calls;
+it does not suppress messages. Regression checks assert card and guide retention,
+warning absence and the final same-Z order. No general Qt ownership framework or
+card-lifetime redesign is added.
 
 ## Geometry availability and unknown values
 
@@ -117,7 +121,7 @@ Actual tools: CPython 3.13.14 (64-bit Windows), PySide6/Qt 6.11.2, pytest 9.1.1,
 Pint 0.24.4, pypdf 6.19.0, Poppler 26.07.0. No dependency or persisted preference,
 default, OS locale, schema, migration or reference-fixture changes were made.
 
-Exact final command from repository root (older fixtures use in-memory A4
+Historical M07 validation command from repository root (older fixtures use in-memory A4
 normalization; new profile fixtures configure paper explicitly):
 
 ```powershell
@@ -145,7 +149,7 @@ raise SystemExit(pytest.main([
 '@ | & .\venv\Scripts\python.exe
 ```
 
-**1,065 passed in 50.06 seconds.** This includes 17 new profile cases, 9 compatibility
+**1,065 passed in 50.06 seconds.** This includes 16 new profile cases, 10 compatibility
 cases (current-schema SQLite with both query-order modes), 28 adoption cases,
 20 geometry, 55 layout, 2 PDF smoke, 6 print/UI, 22 measured export, 42 native,
 756 existing scene and 108 page-configuration cases. Tests use local synthetic images;
@@ -166,6 +170,45 @@ SQLite databases. All three strings round-trip unchanged, stay strings in UI/mod
 and retain invalid-global reset and invalid-document rejection. No serialization code
 was modified. M03–M06 numeric output tests retain their original content tolerances,
 including M06 Standard-mode backend-origin residual accounting.
+
+## Ownership safeguard follow-up
+
+The installed Windows environment remains PySide6, Qt and Shiboken 6.11.2; no
+dependency was installed or upgraded. A minimal scene-owned parentless line gave
+`ownedByPython=False` initially, `True` after `parentItem()` returned `None`, and
+`False` after `scene()` returned the original scene. After deleting the temporary
+item reference and running `gc.collect()`, the scene still contained one item.
+This is an installed-version diagnostic, not a permanent requirement that future
+bindings reproduce the defect. Shiboken diagnostics are not imported in production.
+
+The composite lifecycle regression captures Qt messages using pytest-qt's scoped
+`qtlog` fixture across construction, refresh, redraw, switching, undo/redo and
+invalid-state recovery. It checks that no `QGraphicsScene::addItem` warning occurs,
+releases temporary stacking lists and collects garbage before card/guide retention
+assertions. Registration roots/descendants, selector exclusions and same-Z ordering
+remain checked. The fixture manages and restores its message handler; application
+logging behavior is unchanged.
+
+Exact focused follow-up command from the repository root:
+
+```powershell
+$env:PATH = "$PWD\venv\Scripts;$env:PATH"
+& .\venv\Scripts\python.exe -m pytest `
+  tests/page_scene/test_registration_profiles.py::test_composite_ownership_stacking_recovery_and_switching `
+  tests/page_scene/test_registration_profiles.py::test_render_matches_accepted_six_item_construction `
+  tests/page_scene/test_registration_profiles.py::test_actual_page_refresh_reuses_roots_and_empty_retains_marks `
+  tests/test_native_print_mapping.py::test_marked_native_software_example `
+  -q --timeout=30 --tb=short
+```
+
+**8 passed in 2.31 seconds.** Duplicate-add warnings were absent. No in-memory A4
+normalization was needed for these explicitly configured fixtures. The original
+1,065-case command and unrelated settings/serialization/layout/export/network suites
+were not rerun. No new physical or native interactive qualification was performed.
+Future validation is selected according to the actual change and shared-behavior
+risks; previous milestone commands are historical evidence, not automatic selections.
+No remaining safeguard limitation or blocker was observed in this environment;
+physical/native interactive and Leonardo/Siser qualification limits remain below.
 
 ## Output and visual inspection
 

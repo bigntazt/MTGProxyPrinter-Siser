@@ -1,5 +1,6 @@
 """Registration ownership, preserved graphics and actual-page placement."""
 import copy
+import gc
 
 import pytest
 from PySide6.QtCore import QPointF, QRectF, QPersistentModelIndex, Qt
@@ -149,7 +150,7 @@ class CompositeProfile:
                                 geometry.margin_frame_px.y))
 
 
-def test_composite_ownership_stacking_recovery_and_switching(profile_document, monkeypatch):
+def test_composite_ownership_stacking_recovery_and_switching(profile_document, monkeypatch, qtlog):
     import mtg_proxy_printer.page_scene.page_scene as scene_module
     resolver = get_registration_profile
     composite = CompositeProfile()
@@ -169,11 +170,16 @@ def test_composite_ownership_stacking_recovery_and_switching(profile_document, m
     line_state = roots[0].line(), roots[0].pen(), roots[0].pos()
 
     def check_stacking():
+        gc.collect()  # No temporary guide/card wrappers should keep scene items alive.
         ascending = scene.items(Qt.SortOrder.AscendingOrder)
         assert len(scene.cut_lines) == len(scene.geometry.grid_x_edges_px) + len(scene.geometry.grid_y_edges_px)
         for root in scene.print_markers:
             assert all(ascending.index(root) < ascending.index(guide) for guide in scene.cut_lines
                        if root.zValue() == guide.zValue())
+        assert len(scene.card_items) == 2
+        del ascending
+        gc.collect()
+        assert len(scene.cut_lines) == len(scene.geometry.grid_x_edges_px) + len(scene.geometry.grid_y_edges_px)
         assert len(scene.card_items) == 2
 
     for _ in range(3):
@@ -215,6 +221,7 @@ def test_composite_ownership_stacking_recovery_and_switching(profile_document, m
         d.redo()
         assert len(scene.print_markers) == count
     assert sum(scene._is_registration_item(item) for item in scene.items()) == 6
+    assert not [record.message for record in qtlog.records if "QGraphicsScene::addItem" in record.message]
 
 
 def test_unknown_in_memory_style_is_disabled_without_mutation(profile_document):
