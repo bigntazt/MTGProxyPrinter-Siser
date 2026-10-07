@@ -1,6 +1,6 @@
 {
   "milestone": "M02",
-  "status": "complete_negative_workflow_finding",
+  "status": "complete_two_workflow_findings_numeric_restoration_pending",
   "recorded_date": "2026-10-05",
   "accepted_m01_sha": "014156d9c4dfc16fe67e443220443c1db239d12b",
   "coordinate_convention": "millimetres; top-left origin; x right, y down; geometric bounds, no stroke",
@@ -873,5 +873,282 @@
     "small_page_margins": null,
     "selected_cutter_profile": null,
     "edition": null
+  },
+  "artwork_only_followup": {
+    "workflow": "User-reported: Artwork Only import, retain print originals, duplicate for cut, enable Print and Cut/Page Marks, export; no manual resizing or repositioning",
+    "selected_profile": null,
+    "edition": null,
+    "runs": [
+      {
+        "id": "letter-base",
+        "print_output": {
+          "path": "references/artwork-only/letter-base/Mark-Letter-Portrait_Artwork Import_Toggle_Print_Cut.pdf",
+          "sha256": "da5bf462370bcaa6b758630924537612ca4e5c5582374477571a39678b6d2e87",
+          "received_filename": "probes/Probe Marks Enabled/Mark-Letter-Portrait_Artwork Import_Toggle_Print_Cut.pdf"
+        },
+        "native_project": {
+          "path": "references/artwork-only/letter-base/Mark-Letter-Portrait_Artwork Import_Toggle_Print_Cut.lds",
+          "sha256": "8f4a1e80808a9f1bb0076fb23b1410533565e504d92d266dbcc21e27824d91fe",
+          "received_filename": "probes/Probe Marks Enabled/Mark-Letter-Portrait_Artwork Import_Toggle_Print_Cut.lds"
+        },
+        "pdf_observed": {
+          "page_pt": [
+            612,
+            792
+          ],
+          "rectangle_mm": {
+            "x0": 80.4000033799993,
+            "top": 65.90000168833265,
+            "width": 30.000003500000005,
+            "height": 20.000002333333317
+          },
+          "vector_bar_rectangles_mm": [
+            {
+              "x0": 6.000000700000001,
+              "top": 5.5000006416666665,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 6.000000700000004,
+              "width": 1.000000116666667,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 196.90001697166596,
+              "top": 5.5000006416666665,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 209.4000184299993,
+              "top": 6.000000700000004,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 6.000000700000001,
+              "top": 272.9000258383326,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 260.4000243799993,
+              "width": 1.000000116666667,
+              "height": 13.00000151666664
+            },
+            {
+              "x0": 196.90001697166596,
+              "top": 272.9000258383326,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 209.4000184299993,
+              "top": 260.4000243799993,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666664
+            }
+          ],
+          "raster_images": 0
+        },
+        "native_ui_record_inches": {
+          "rectangle_left_top": [
+            3.165,
+            2.594
+          ],
+          "rectangle_width_height": [
+            1.181,
+            0.787
+          ]
+        },
+        "native_ui_provenance": "Wayne position record; inspector anchor/unit semantics not independently operated",
+        "print_cut_duplicate_agreement": "User reports matching size and position; PDF does not measure nonprinting cut object"
+      },
+      {
+        "id": "letter-shifted",
+        "print_output": {
+          "path": "references/artwork-only/letter-shifted/Mark-Letter-Portrait-Shifted_Artwork Import_Toggle_Print_Cut.pdf",
+          "sha256": "da5bf462370bcaa6b758630924537612ca4e5c5582374477571a39678b6d2e87",
+          "received_filename": "probes/Probe Marks Enabled/Mark-Letter-Portrait-Shifted_Artwork Import_Toggle_Print_Cut.pdf"
+        },
+        "native_project": {
+          "path": "references/artwork-only/letter-shifted/Mark-Letter-Portrait-Shifted_Artwork Import_Toggle_Print_Cut.lds",
+          "sha256": "ee8eb231e9300c26869ad79c2cc4a62c7a9107aaed9d525a57bb2cd8e3f4fe0b",
+          "received_filename": "probes/Probe Marks Enabled/Mark-Letter-Portrait-Shifted_Artwork Import_Toggle_Print_Cut.lds"
+        },
+        "pdf_observed": {
+          "page_pt": [
+            612,
+            792
+          ],
+          "rectangle_mm": {
+            "x0": 80.4000033799993,
+            "top": 65.90000168833265,
+            "width": 30.000003500000005,
+            "height": 20.000002333333317
+          },
+          "vector_bar_rectangles_mm": [
+            {
+              "x0": 6.000000700000001,
+              "top": 5.5000006416666665,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 6.000000700000004,
+              "width": 1.000000116666667,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 196.90001697166596,
+              "top": 5.5000006416666665,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 209.4000184299993,
+              "top": 6.000000700000004,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 6.000000700000001,
+              "top": 272.9000258383326,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 260.4000243799993,
+              "width": 1.000000116666667,
+              "height": 13.00000151666664
+            },
+            {
+              "x0": 196.90001697166596,
+              "top": 272.9000258383326,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 209.4000184299993,
+              "top": 260.4000243799993,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666664
+            }
+          ],
+          "raster_images": 0
+        },
+        "native_ui_record_inches": {
+          "rectangle_left_top": [
+            3.165,
+            2.594
+          ],
+          "rectangle_width_height": [
+            1.181,
+            0.787
+          ]
+        },
+        "native_ui_provenance": "Wayne position record; inspector anchor/unit semantics not independently operated",
+        "print_cut_duplicate_agreement": "User reports matching size and position; PDF does not measure nonprinting cut object"
+      },
+      {
+        "id": "a4-landscape",
+        "print_output": {
+          "path": "references/artwork-only/a4-landscape/Mark-A4-Landscape_Artwork Import_Toggle_Print_Cut.pdf",
+          "sha256": "251dcc6383f1e4b6f4fe8a118869ee892d75c66e22b0938c2a945d8b65594f33",
+          "received_filename": "probes/Probe Marks Enabled/Mark-A4-Landscape_Artwork Import_Toggle_Print_Cut.pdf"
+        },
+        "native_project": {
+          "path": "references/artwork-only/a4-landscape/Mark-A4-Landscape_Artwork Import_Toggle_Print_Cut.lds",
+          "sha256": "a1de7089d85c62b2dc574d946ec838879de19476ffc55bb5f85b9799586b940e",
+          "received_filename": "probes/Probe Marks Enabled/Mark-A4-Landscape_Artwork Import_Toggle_Print_Cut.lds"
+        },
+        "pdf_observed": {
+          "page_pt": [
+            841.799988,
+            595.200012
+          ],
+          "rectangle_mm": {
+            "x0": 42.8999990049993,
+            "top": 83.40000372999933,
+            "width": 30.00000350000001,
+            "height": 20.000002333333317
+          },
+          "vector_bar_rectangles_mm": [
+            {
+              "x0": 6.000000700000001,
+              "top": 5.5000006416666665,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 6.000000700000004,
+              "width": 1.000000116666667,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 277.9683554296377,
+              "top": 5.5000006416666665,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 290.468356887971,
+              "top": 6.000000700000004,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666668
+            },
+            {
+              "x0": 6.000000700000001,
+              "top": 203.47335173855492,
+              "width": 13.000001516666664,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 5.500000641666667,
+              "top": 190.9733502802216,
+              "width": 1.000000116666667,
+              "height": 13.00000151666664
+            },
+            {
+              "x0": 277.9683554296377,
+              "top": 203.47335173855492,
+              "width": 13.00000151666668,
+              "height": 1.0000001166666739
+            },
+            {
+              "x0": 290.468356887971,
+              "top": 190.9733502802216,
+              "width": 1.0000001166666739,
+              "height": 13.00000151666664
+            }
+          ],
+          "raster_images": 0
+        },
+        "native_ui_record_inches": {
+          "rectangle_left_top": [
+            1.689,
+            3.283
+          ],
+          "rectangle_width_height": [
+            1.181,
+            0.787
+          ]
+        },
+        "native_ui_provenance": "Wayne position record; inspector anchor/unit semantics not independently operated",
+        "print_cut_duplicate_agreement": "User reports matching size and position; PDF does not measure nonprinting cut object"
+      }
+    ],
+    "position_record": {
+      "path": "references/artwork-only/records/Position Records.txt",
+      "sha256": "9bf6ecbddb2ce6e7733f33a21fe14717ed26a638e31ee35e2e6b6883de18759b",
+      "received_filename": "probes/Position Records.txt"
+    },
+    "letter_pair_byte_identical": true
   }
 }

@@ -1,5 +1,5 @@
 # Keep probe hashes stable on Windows checkouts.
 probes/*.svg text eol=lf
 # Acquired originals must remain byte-for-byte unchanged, including text native formats.
-references/** -text
+references/** -text -diff
 initial-measurements.json text eol=lf

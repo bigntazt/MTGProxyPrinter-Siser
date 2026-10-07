@@ -1,6 +1,6 @@
 # M02: Leonardo reference and SVG import evidence
 
-**Status: Complete — negative workflow finding; M08 registration gate remains.** Recorded 2026-10-05,
+**Status: Complete investigation with two workflow findings; numeric restoration pending and M08 gated.** Recorded 2026-10-05,
 America/Los_Angeles. Six user-exported PDFs have been preserved and measured.
 Three native .lds projects and two settings screenshots are preserved. These
 measurements do not establish a general registration specification.
@@ -234,15 +234,15 @@ Native saves and settings are preserved for a later targeted investigation.
 | Required proof | Current state |
 | --- | --- |
 | Declared page extent / empty margins | Unknown |
-| Shape sizes and relative distances | Known only in the source SVG; Leonardo preservation unknown |
-| Absolute placement, rotation, mirroring | Unknown |
+| Shape sizes and relative distances | Artwork Only rectangles preserve 30 × 20 mm; native UI group bounds recorded; complete relative geometry and cut preview unverified |
+| Absolute placement, rotation, mirroring | Artwork Only PDF/native record agree; authored translation lost during import; numeric restoration, full contour orientation remain pending |
 | Generated mark dimensions, anchors, constraints | Initial PDF bar dimensions measured; anchors and constraints unknown |
 | Mark behavior after translation and save/reopen | Unknown |
 | Juliet/Romeo equivalence | Unknown; requires separate software references |
 | Externally supplied marks: recognized, ignored, cut, or repositioned | Unknown; not included in these probes |
 | Contours corresponding to an already printed page | Unproven |
 
-**Supported conclusion: insufficient evidence for a standalone SVG workflow.**
+**Supported conclusion: insufficient evidence for a standalone SVG aligned to independently printed pages.**
 Contours-only import with Leonardo managing registration is a candidate to test,
 not a validated recommendation for pages printed by MTGProxyPrinter. A cut-only
 job preserving relative contours still does not establish their alignment to a
@@ -265,7 +265,7 @@ anchor acquisition, feed/orientation, material stability, registration repeatabi
 and finished-cut alignment. Software references alone prove none of these.
 No physical printer/cutter operation is required or was performed in M02.
 
-## Validation and next handoff
+## Historical validation and M02 handoff
 
 `venv\Scripts\python.exe tests/data/print_cut/siser/verify_fixtures.py` passes:
 three parsed SVGs, page/shape coordinates, fixed translation, manifest hashes,
@@ -283,3 +283,102 @@ remains gated on an independently demonstrated size/placement-preserving workflo
 Save/reopen checks, native dimension inspection, Romeo comparison, and external
 mark handling were not performed. No further user files are required for this
 M02 handoff. M03 is authorized separately and does not reopen this investigation.
+
+## Artwork Only follow-up (incorporated during M04, 2026-10-07)
+
+Historical direct Print & Cut import → Export remains a separate evidence track:
+its measured artwork is reduced and rasterized; the responsible stage was not
+isolated. This finding and any approximate five-inch width do not apply to the
+new Artwork Only route.
+
+**User-reported workflow:** Wayne imported Artwork Only, retained the original
+shapes for printing, duplicated them for cut paths, enabled Print & Cut / Page
+Marks, and exported matching PDFs. He reports no manual resizing or repositioning
+and matching sizes/positions for the print rectangles and duplicate cut rectangles.
+The agent did not operate this workflow or inspect the nonprinting cut objects.
+
+**Reproduced locally:** three new PDFs contain vector artwork (no raster image
+objects), eight page-relative registration bars, and rectangles measuring
+approximately 30.0000035 × 20.0000023 mm. Letter rectangles are at
+(80.4000034, 65.9000017) mm; A4 is at (42.8999990, 83.4000037) mm. PDF page
+boxes remain Letter portrait and approximately A4 landscape. Exact preserved
+Letter base/shifted PDF hashes match: the files are byte-identical.
+
+**Native UI records supplied by Wayne:** `Position Records.txt` records Letter
+rectangle left/top as 3.165 / 2.594 inches and A4 as 1.689 / 3.283 inches;
+rectangle width/height are 1.181 / .787 inches. Converted positions differ from
+PDF coordinates by at most .0126 mm, consistent with .001-inch display rounding.
+The native record reports identical default base/shifted Letter group positions.
+The group-size records agree approximately with 144 × 173 mm (Letter) and
+219 × 138 mm (A4). Native records establish supplied UI observations; the PDF
+establishes printed geometry, not independent measurement of the cut duplicate.
+Three native saves preserve this follow-up but their internal geometry and
+save/reopen persistence were not decoded or independently verified.
+
+**Conclusion for this route:** physical dimensions of the tested artwork are
+preserved and PDF placement matches supplied native placement. The original
++12 / +9 mm translation is already absent in the native import records. Artwork
+Only normalizes placement in these probes; numeric restoration is not yet proven.
+This does not establish alignment to MTGProxyPrinter's independently printed page.
+
+**Inferences:** combining source occupied bounds with the rectangle positions,
+assuming the rectangle remains the group's upper-left bound and internal geometry
+is unchanged, implies group centres at (152.4, 152.4) mm in both cases. This is
+consistent with fixed work-area centring, not proof of page centring, a universal
+rule, a registration anchor, or a compensation to implement. The missing L object
+would lie partly outside the paper under the recorded placement; its omission is
+consistent with that placement, not an established general clipping rule.
+
+Seven new artifacts are preserved byte-for-byte under
+`references/artwork-only/<run-id>/`: three PDF/LDS pairs plus the position record.
+Received filenames, SHA-256 digests, reproduced rectangle/bar values, and
+provenance are in the separate `artwork_only_followup` manifest section. Originals
+remain in the incoming folder. Historical 11 artifacts and three source SVGs
+remain unchanged. No unidentified profile observations populate planned
+Juliet/Romeo runs. The fixture verifier reports historical and follow-up counts
+separately. `references/** -text` preserves acquisition bytes in Git.
+
+## Next targeted Leonardo validation (later execution, not an M04 dependency)
+
+1. **Establish coordinates.** Record actual version/edition, selected cutter
+   profile, page size/orientation, material/work-area mode/dimensions, units,
+   selected inspector anchor, whether X/Y is page- or work-area-relative, and
+   whether bounds include strokes. Verify conventions before numeric placement.
+2. **Restore the complete imported group.** Fresh Artwork Only imports must
+   include all four shapes, including off-page objects. Preserve dimensions and
+   relative geometry. With a verified page-relative top-left anchor, use:
+
+   | Probe | Left, mm | Top, mm | Width check, mm | Height check, mm |
+   | --- | ---: | ---: | ---: | ---: |
+   | Letter base | 25 | 35 | 144 | 173 |
+   | Letter shifted | 37 | 44 | 144 | 173 |
+   | A4 landscape | 35 | 25 | 219 | 138 |
+
+   Width/height are checks, not resizing instructions. If a verified control uses
+   group centre, authored targets are (97, 121.5), (109, 130.5), and (144.5, 94)
+   mm respectively. Different origins/anchors require a demonstrated conversion;
+   these source-derived targets are not observed-position compensation constants.
+3. **Establish cut geometry.** Keep correctly placed print originals. Duplicate
+   all four shapes with a placement-preserving native operation or align the
+   duplicate numerically. Record roles, positions, and dimensions of both groups.
+   Check no contours are omitted, resized, mirrored, rearranged, or cut twice.
+4. **Persistence and repeatability.** Enable Print & Cut/Page Marks and recheck
+   both groups. Export PDF, save LDS, close/reopen, inspect numeric geometry and
+   cut preview without sending a job. Repeat from fresh imports. Corrected Letter
+   PDFs must show a 12 mm right / 9 mm down translation; byte-identical corrected
+   exports would fail this check.
+5. **Software acceptance.** Check every shape's dimensions/page coordinates,
+   relative geometry, restored L object, PDF boxes/orientation/transforms,
+   corresponding native print/cut geometry, unchanged page-relative bars, and
+   persistence/repeatability without approximate dragging or remembered offsets.
+   Record numeric-entry precision separately from display precision. If entry
+   truly quantizes to .001 inch, half a step is .0127 mm per coordinate; comparing
+   independently quantized coordinates can add .0254 mm difference error before
+   measurement uncertainty. These are software bounds, not cutter accuracy.
+
+A successful result resolves a software prerequisite only. Camera anchors,
+external-mark handling, clear zones/minimum margins, actual print scale/skew,
+Juliet alignment/repeatability, Romeo equivalence, and Cut Only / contours-only
+imports with different occupied bounds remain separate gates. **M08 stays closed.**
+The architecture remains MTGProxyPrinter print/PDF output plus a matching cut
+job; diagnostic success does not switch the product to Leonardo-hosted printing.

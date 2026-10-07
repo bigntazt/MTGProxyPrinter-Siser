@@ -124,3 +124,22 @@ translation, checks manifest/file hashes, and checks scalar PDF unit conversions
 It imports no application settings and measures no nonexistent native output.
 The `.gitattributes` rules keep SVG hashes stable and prevent Git altering
 acquired originals. No dependencies or application-test rerun are needed.
+
+## Artwork Only follow-up and next validation
+
+The newer Artwork Only route has seven separately preserved artifacts under
+`references/artwork-only/`: three PDF/LDS pairs and Wayne's Position Records.txt.
+It preserves the tested 30 × 20 mm print rectangles, while base/shifted imports
+normalize to identical positions. See the report's Artwork Only section for
+reproduced PDF values and supplied native observations. Historical direct Print
+& Cut evidence remains separate. The verifier covers 11 historical plus seven
+follow-up acquisitions; source SVGs remain unchanged.
+
+The **next targeted validation** is the report's five-step procedure: verify
+coordinate origin/anchor and units; restore the complete four-shape group using
+source-derived page targets; duplicate and verify print/cut geometry; save/reopen;
+and repeat from fresh imports, proving the corrected +12/+9 mm Letter shift.
+Include the initially off-page L object. Do not resize, guess offsets, or assume
+X/Y is page-relative. Record numeric-entry versus display precision. This is a
+later handoff; M04 requires no new acquisition, Leonardo operation, print, or cut.
+M08 registration and physical alignment remain gated.

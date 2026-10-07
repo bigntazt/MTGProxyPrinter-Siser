@@ -33,6 +33,14 @@ def verify():
     reference_count = 0
     for artifact in manifest.get("screenshots", []):
         reference_count += check_artifact(artifact)
+    followup = manifest.get("artwork_only_followup")
+    if followup:
+        followup_count = check_artifact(followup["position_record"])
+        for run in followup["runs"]:
+            followup_count += check_artifact(run["print_output"])
+            followup_count += check_artifact(run["native_project"])
+        assert followup["runs"][0]["print_output"]["sha256"] == followup["runs"][1]["print_output"]["sha256"]
+        print(f"PASS Artwork Only follow-up: {followup_count} acquired artifacts; Letter PDFs byte-identical")
     for reference in manifest.get("initial_reference_outputs", []):
         reference_count += check_artifact(reference["print_output"])
         reference_count += check_artifact(reference["native_project"])

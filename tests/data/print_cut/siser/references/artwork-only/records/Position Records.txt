@@ -1,0 +1,59 @@
+letter-portrait.svg: Import Artwork Only - Default Position
+Width: 5.669"
+Height: 6.811"
+Left X: 3.165"
+Top Y: 2.594"
+
+letter-portrait.svg: Import Artwork Only - Toggle Print & Cut after Import
+Width: 8.028"
+Height: 10.528"
+Left X: .236"
+Top Y: .236"
+
+30 x 20mm Rectangle
+Width: 1.181"
+Height: .787"
+Left X: 3.165"
+Top Y: 2.594"
+
+Saved as: Mark-Letter-Portrait_Artwork Import_Toggle_Print_Cut.lds
+
+letter-portrait-shifted.svg: Import Artwork Only - Default Position
+Width: 5.669"
+Height: 6.811"
+Left X: 3.165"
+Top Y: 2.594"
+
+letter-portrait.svg: Import Artwork Only - Toggle Print & Cut after Import
+Width: 8.028"
+Height: 10.528"
+Left X: .236"
+Top Y: .236"
+
+30 x 20mm Rectangle
+Width: 1.181"
+Height: .787"
+Left X: 3.165"
+Top Y: 2.594"
+
+Saved as: Mark-Letter-Portrait-Shifted_Artwork Import_Toggle_Print_Cut.lds
+
+a4-landscape.svg: Import Artwork Only - Default Position
+Width: 8.622"
+Height: 5.433"
+Left X: 1.689"
+Top Y: 3.283"
+
+a4-landscape.svg: Import Artwork Only - Toggle Print & Cut after Import
+Width: 8.622"
+Height: 5.433"
+Left X: 1.689"
+Top Y: 3.283"
+
+30 x 20mm Rectangle
+Width: 1.181"
+Height: .787"
+Left X: 1.689"
+Top Y: 3.283"
+
+Saved as: Mark-A4-Landscape_Artwork Import_Toggle_Print_Cut.lds
