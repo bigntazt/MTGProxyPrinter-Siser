@@ -130,15 +130,16 @@ Production bleed updates use named top/bottom/left/right arguments.
 Tiny positive spacing rounded to zero now produces the approved unique shared
 edges without the old extra/duplicate guide.
 
-## Presentation retained for M05/M06
+## Presentation after M05; native transforms retained for M06
 
-Cards and guides retain existing printer X offset (zero ON_SCREEN, configured
-otherwise, including PDF/PNG) and rounded left/top subtraction for IMPLICIT_MARGINS.
+Cards and guides use zero X offset for ON_SCREEN or FILE_EXPORT; native ON_PAPER
+retains the configured printer offset and rounded left/top subtraction for
+IMPLICIT_MARGINS. PDF/PNG use ON_PAPER | FILE_EXPORT without implicit margins.
 Vertical guide caches omit X offset; drawing adds it exactly once. Full scene
 extent uses snapshot rounded dimensions. Implicit extent still subtracts physical
 margins before rounding; it is not the difference of rounded pixel quantities.
 
-Registration anchors use snapshot `margin_frame_px`, retain X offset, and retain
+Registration anchors use snapshot `margin_frame_px`, use mode-specific X offset, and retain
 all existing style strings, classes, visibility, item scaling/rotation/anchor
 adjustments. They deliberately retain the old absence of implicit-margin
 subtraction. No Siser marks or profiles are added.
@@ -146,8 +147,11 @@ subtraction. No Siser marks or profiles are added.
 Labels retain the greater final regular/oversized horizontal guide edge plus
 rounded full bleed and two units. Title/page-number X uses regular guides; the
 title has no printer X offset, while the page number does. Wrapping is unchanged.
-Unavailable grids hide dependent labels. PDF/PNG/printer mapping corrections,
-registration profiles, and physical alignment remain later work.
+Unavailable grids hide dependent labels. M05 PDF/PNG now map the actual snapshot
+physical sheet rectangle with explicit DPI scaling and a pure optional PDF
+quarter-turn. See [export-geometry.md](export-geometry.md) for measurements and
+rounding/clipping boundaries. Native printer transforms remain for M06;
+registration profiles and physical alignment remain later work.
 
 ## Historical M03 validation
 
@@ -231,4 +235,5 @@ No physical print/cut validation was performed or required.
 Leonardo numeric placement restoration/persistence/repeatability remains a later
 validation task described in `siser-reference.md`. M08 registration stays gated;
 no Leonardo compensation is included. M04 stops at the pushed milestone branch
-for architect review; M05 is not started.
+for architect review. M05 subsequently implements file mapping as documented in
+`export-geometry.md`; the preceding results describe the historical M04 state.
