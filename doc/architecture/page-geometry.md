@@ -1,4 +1,4 @@
-# M03 nominal page geometry and M04 handoff
+# Shared nominal page geometry: M03 contract and M04 adoption
 
 `model.page_geometry.build_page_geometry(layout, page_type, card_count)` is a
 synchronous, uncached calculation. It reads explicit inputs without modifying
@@ -79,19 +79,77 @@ workaround, output-resolution scaling, PDF fitting, or Leonardo compensation is
 applied. `to_page_layout()` is not used. Output adapters own those transformations.
 No registration dimensions or corner-radius policy enter this calculation.
 
-M03 leaves the active PageScene calculation unchanged. M04 should replace nominal
-calculations in `_compute_position_for_image`, `update_card_bleeds` /
-`_has_neighbors`, and `_compute_cut_marker_positions` with snapshot consumption.
-Margin anchor consumers can use `margin_frame_px`. Pass the actual target page's
-type/count explicitly, map placements back through slot indexes, and handle
-invalid/transient inputs deliberately. Apply render-mode and printer transforms
-after nominal geometry. Consolidate the consumers rather than maintain two
-continuing layout implementations.
+M03 introduced the builder without changing active rendering. M04 now makes
+PageScene consume it for occupied card placements, bleed distances, full-grid
+manual guides, registration margin anchors, nominal full scene extent, and label
+positioning. No independent placement/bleed/guide arithmetic remains in the scene.
+No geometry field is added to PageLayoutSettings; document serialization and
+settings migrations remain unchanged.
 
-No geometry field is added to PageLayoutSettings; dataclass-based document
-serialization is unchanged. Production modules do not yet import this builder.
+## M04 scene ownership and reconciliation
 
-## Validation
+Each scene owns `geometry` for its actual persistent `selected_page`, plus
+`full_grid_geometry` REGULAR/OVERSIZED snapshots populated to capacity for guides
+and compatibility queries. Full grids rebuild on layout changes; actual snapshots
+refresh for page selection, insertion/removal/movement, replacement, page type,
+and layout notifications. Row/column fields derive from the actual snapshot;
+unavailable geometry uses zero counts. No global/persistent geometry cache exists.
+Output scenes may select a different page without changing the UI selection.
+
+Production item positions and bleeds resolve `geometry.placements[item.index.row()]`.
+The position-sorted card item list is not a model slot array. Missing pixmaps leave
+holes; Image-column data changes can create a newly available item in its proper
+slot. Ordinary updates remain incremental, including retention of unaffected
+items. Count-only changes with unchanged grid edges do not redraw guides.
+
+Strict-builder ValueError (mixed, over-capacity, nonempty zero-capacity) becomes
+an explicit scene-unavailable state: `geometry=None`, `geometry_pending=True`,
+and `geometry_unavailable_reason`. Cards/guides are removed and labels hidden.
+No count is clamped and no mixed page is reinterpreted. About-to-remove handlers
+remove items while their persistent indices are still safe. Later valid model
+notifications rebuild all cards if changes were deferred, restore positions,
+bleed/guides/labels, and clear the pending state/reason. Root changes preserve
+selected-page identity and page numbering; an invalid removed selection may use
+the document's existing current selection as its replacement.
+
+`action_applied` and `action_undone` provide a final pending retry; redo uses
+`action_applied`. Normal model signals also recover direct `action.apply()` calls.
+No signal-order change, timer, sleep, or transaction/coalescing framework is added.
+`require_geometry_ready()` retries pending reconciliation and raises RuntimeError
+with the reason if unresolved. The common `render(*args, **kwargs)` boundary calls
+it before forwarding unchanged Qt arguments. Onscreen transient states remain safe;
+explicit output cannot silently succeed with stale/blank invalid content. Empty
+zero-capacity pages are valid blank output, with no grid or grid-dependent labels.
+
+`_compute_position_for_image` remains an uncached full-capacity lookup plus the
+presentation translation; UNDETERMINED maps to the regular grid. Actual rendering
+uses occupied placements instead. `_has_neighbors` is compatibility-only and
+reads adjacency from occupied row/column coordinates, never bleed magnitudes.
+Production bleed updates use named top/bottom/left/right arguments.
+`_compute_cut_marker_positions` and unused `CutMarkerParameters` are removed.
+Tiny positive spacing rounded to zero now produces the approved unique shared
+edges without the old extra/duplicate guide.
+
+## Presentation retained for M05/M06
+
+Cards and guides retain existing printer X offset (zero ON_SCREEN, configured
+otherwise, including PDF/PNG) and rounded left/top subtraction for IMPLICIT_MARGINS.
+Vertical guide caches omit X offset; drawing adds it exactly once. Full scene
+extent uses snapshot rounded dimensions. Implicit extent still subtracts physical
+margins before rounding; it is not the difference of rounded pixel quantities.
+
+Registration anchors use snapshot `margin_frame_px`, retain X offset, and retain
+all existing style strings, classes, visibility, item scaling/rotation/anchor
+adjustments. They deliberately retain the old absence of implicit-margin
+subtraction. No Siser marks or profiles are added.
+
+Labels retain the greater final regular/oversized horizontal guide edge plus
+rounded full bleed and two units. Title/page-number X uses regular guides; the
+title has no printer X offset, while the page number does. Wrapping is unchanged.
+Unavailable grids hide dependent labels. PDF/PNG/printer mapping corrections,
+registration profiles, and physical alignment remain later work.
+
+## Historical M03 validation
 
 Focused tests characterize A4 anchors, Letter, landscape/custom orientation,
 asymmetric clamps, both card types, partial occupancy, neighbor bleed and rounding,
@@ -128,3 +186,49 @@ raise SystemExit(pytest.main([
 ]))
 '@ | & .\venv\Scripts\python.exe
 ```
+
+## M04 validation and limitations
+
+Recorded 2026-10-07 (America/Los_Angeles). The combined run passed 856 cases:
+20 M03 geometry, 55 legacy layout, 756 legacy scene, 19 new adoption, and six
+existing PDF export smoke cases. After adding the last empty-zero-capacity output
+case, all 20 adoption cases pass (857 unique cases validated across these runs).
+The fixture verifier passes 11 historical plus seven Artwork Only acquisition
+hashes; all three source SVGs remain unchanged.
+
+Focused adoption coverage includes partial/oversized/empty hidden output targets
+while UI selection stays elsewhere, fractional margins, X offsets and marker
+adjustments, implicit rounding order, missing-image holes/new images, incremental
+move/remove/replace/undo/redo, three-page shrinking reflow with temporary destination
+overflow, empty-size transitions, sole-card size replacement, root page numbering,
+selected-page removal, new-document replacement, invalid render rejection/recovery,
+valid zero-capacity blank output, and tiny-spacing unique guides.
+
+Run from the root using the existing development environment and in-memory A4
+normalization shown above, with this pytest selection:
+
+```python
+[
+    'tests/model/test_page_geometry.py',
+    'tests/model/test_page_layout_settings.py',
+    'tests/page_scene/test_page_scene.py',
+    'tests/page_scene/test_page_geometry_adoption.py',
+    'tests/test_print.py::test_export_pdf_creates_a_pdf_file',
+    '-q', '--timeout=30', '--tb=short',
+]
+```
+
+No saved defaults, printer preferences, locale, dependencies, document schema,
+or model-action signal ordering were changed. No full application suite or
+network loader rerun was performed. Two synthetic offscreen images (five regular
+cards and three oversized cards) were rendered and visually inspected: full-grid
+guides and expected partial occupancy/bleed presentation appeared. Review PNGs
+remain local in ignored `.m01-output/m04-regular.png` and `m04-oversized.png`.
+Native window inventory found no running MTGProxyPrinter target; a native
+interactive UI check was not performed. Offscreen review does not establish it.
+No physical print/cut validation was performed or required.
+
+Leonardo numeric placement restoration/persistence/repeatability remains a later
+validation task described in `siser-reference.md`. M08 registration stays gated;
+no Leonardo compensation is included. M04 stops at the pushed milestone branch
+for architect review; M05 is not started.
