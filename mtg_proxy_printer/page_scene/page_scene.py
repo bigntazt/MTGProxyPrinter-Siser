@@ -50,6 +50,7 @@ class RenderMode(enum.Flag):
     ON_PAPER = enum.auto()
     IMPLICIT_MARGINS = enum.auto()
     FILE_EXPORT = enum.auto()
+    NATIVE_PRINT = enum.auto()
 
 
 def is_card_item(item: QGraphicsItem) -> bool:
@@ -255,7 +256,7 @@ class PageScene(QGraphicsScene):
 
     @property
     def x_offset(self) -> int:
-        return 0 if self.render_mode & (RenderMode.ON_SCREEN | RenderMode.FILE_EXPORT) \
+        return 0 if self.render_mode & (RenderMode.ON_SCREEN | RenderMode.FILE_EXPORT | RenderMode.NATIVE_PRINT) \
             else distance_to_rounded_px(settings["printer"].get_quantity("horizontal-offset"))
 
     @property
