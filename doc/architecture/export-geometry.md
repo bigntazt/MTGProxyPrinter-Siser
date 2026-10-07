@@ -204,5 +204,6 @@ delegates to the narrowly generalized _render_page with equal DPI and zero nativ
 origin/correction, preserving all measured PDF/PNG invariants. Active native
 scenes use NATIVE_PRINT and the accepted printer mapping described in
 [native-print-geometry.md](native-print-geometry.md). Legacy bare ON_PAPER and
-IMPLICIT_MARGINS still retain their earlier behavior. M07 is not started;
+IMPLICIT_MARGINS still retain their earlier behavior. M07 registration profile
+adoption preserves these transforms; see [registration-profiles.md](registration-profiles.md).
 Leonardo numeric placement and M08 remain pending.

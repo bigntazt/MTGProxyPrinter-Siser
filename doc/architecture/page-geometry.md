@@ -141,9 +141,11 @@ extent uses snapshot rounded dimensions. Implicit extent still subtracts physica
 margins before rounding; it is not the difference of rounded pixel quantities.
 
 Registration anchors use snapshot `margin_frame_px`, use mode-specific X offset, and retain
-all existing style strings, classes, visibility, item scaling/rotation/anchor
+all existing style strings, classes, item scaling/rotation/anchor
 adjustments. They deliberately retain the old absence of implicit-margin
-subtraction. No Siser marks or profiles are added.
+subtraction. M07 now owns only the selected profile's roots and removes stale
+registration subtrees when actual geometry is unavailable. Valid empty pages retain
+marks. See [registration-profiles.md](registration-profiles.md). No Siser profile is added.
 
 Labels retain the greater final regular/oversized horizontal guide edge plus
 rounded full bleed and two units. Title/page-number X uses regular guides; the
@@ -155,7 +157,8 @@ physical sheet rectangle with explicit DPI scaling and a pure optional PDF
 quarter-turn. See [export-geometry.md](export-geometry.md) for measurements and
 rounding/clipping boundaries. M06 native origin, correction, clipping, DPI, and
 rotation are documented in [native-print-geometry.md](native-print-geometry.md).
-Registration profiles and physical alignment remain later work; M07 is not started.
+M07 preserves existing registration output behind stateless profiles. Physical
+alignment and measured Siser registration remain later gated work.
 
 ## Historical M03 validation
 

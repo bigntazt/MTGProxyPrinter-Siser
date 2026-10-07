@@ -4,7 +4,8 @@ Recorded 2026-10-07 (America/Los_Angeles). Accepted M05
 `f48978bea121d202b9d0a4ff692ec6ddd09be1f5` was fast-forwarded into `siser-dev`
 and pushed before creating `milestone/m06-printer-mapping`. Local and remote
 `trunk` remain `00202f988bef071c7070967e86c1490cb19114ba`. M06 is submitted
-on its pushed, unmerged milestone branch. M07 is not started.
+on its milestone branch. Accepted M06 has since been integrated into `siser-dev`
+for M07; registration adoption is documented in [registration-profiles.md](registration-profiles.md).
 
 ## Coordinate spaces and transformation
 
@@ -163,7 +164,7 @@ Primary references examined, pinned where implementation-specific:
 - [QPrinter full-page coordinates](https://doc.qt.io/qt-6/qprinter.html#setFullPage)
 - [QPageLayout modes and intrinsic orientation](https://doc.qt.io/qt-6/qpagelayout.html)
 - [Qt 6.11.2 Windows printer engine](https://github.com/qt/qtbase/blob/v6.11.2/src/printsupport/platform/windows/qprintengine_win.cpp)
-- [Qt 6.11.2 PDF pageMatrix](https://github.com/qt/qtbase/blob/v6.11.2/src/gui/painting/qpdf.cpp#L3337)
+- [Qt 6.11.2 PDF pageMatrix](https://github.com/qt/qtbase/blob/v6.11.2/src/gui/painting/qpdf.cpp#L3557)
 - [Qt 6.11.2 layout rectangles](https://github.com/qt/qtbase/blob/v6.11.2/src/gui/painting/qpagelayout.cpp)
 - [Qt 6.11.2 device layout validation](https://github.com/qt/qtbase/blob/v6.11.2/src/printsupport/kernel/qplatformprintdevice.cpp)
 
@@ -239,11 +240,12 @@ This qualifies printer behavior; cutter-camera alignment remains separate.
 
 ## Remaining boundaries and M07 handoff
 
-M07 starts from the reviewed M06 branch only after acceptance. No M07 feature is
-implemented here. Leonardo numeric placement remains pending and M08 stays gated;
+M07 adopted registration profiles after accepted M06 was integrated. Its contract
+is in [registration-profiles.md](registration-profiles.md). Leonardo numeric
+placement remains pending and M08 stays gated;
 the direct Print & Cut evidence and newer Artwork Only evidence remain distinct.
-No registration classes, Siser marks, profiles, SVG/calibration UI, import
-compensation, physical constants, image enhancement, or packaging work is added.
+M06 itself added no registration classes, Siser marks, profiles, SVG/calibration UI,
+import compensation, physical constants, image enhancement, or packaging work.
 
 Deferred: physical GDI/driver qualification, native interactive checks, spool/copy/
 range/cancellation accounting, general reentrancy/threading, guide-width units,
