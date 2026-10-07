@@ -29,6 +29,7 @@ def scene_document(document_light):
     document_light.page_layout = PageLayoutSettings(
         paper_size="A4", card_bleed=2*mm, row_spacing=1*mm, column_spacing=1*mm,
         cut_marker_style="Solid", document_name="Geometry check", draw_page_numbers=True,
+        print_registration_marks_style="Bullseye",
     )
     return document_light
 
@@ -38,6 +39,8 @@ def check_scene(scene, expected_rows=None):
                                    scene.document.rowCount(scene.selected_page))
     assert scene.geometry == expected
     assert not scene.geometry_pending and scene.geometry_unavailable_reason is None
+    assert len(scene.print_markers) == 3
+    assert all(item.scene() is scene for item in scene.print_markers)
     rows = [item.index.row() for item in scene.card_items]
     assert sorted(rows) == (list(range(len(expected.placements))) if expected_rows is None else expected_rows)
     for item in scene.card_items:
@@ -58,12 +61,13 @@ def check_scene(scene, expected_rows=None):
                                  RenderMode.ON_PAPER | RenderMode.FILE_EXPORT,
                                  RenderMode.ON_PAPER | RenderMode.NATIVE_PRINT,
                                  RenderMode.ON_PAPER | RenderMode.IMPLICIT_MARGINS])
-def test_fractional_margins_offsets_labels_and_registration(scene_document, mode):
+@pytest.mark.parametrize("style", ["Bullseye", "Cut marker"])
+def test_fractional_margins_offsets_labels_and_registration(scene_document, mode, style):
     d = scene_document
     d.page_layout.margin_left = .04*mm
     d.page_layout.margin_right = .04*mm
     d.page_layout.margin_top = 5.04*mm
-    d.page_layout.print_registration_marks_style = "Bullseye"
+    d.page_layout.print_registration_marks_style = style
     with patch.dict(settings['printer'], {'horizontal-offset': '2 mm'}):
         scene = PageScene(d, mode)
         d.apply(ActionAddCard(create_card_with_pixmap("Cyan", color=QColorConstants.Cyan), 4))
@@ -72,9 +76,10 @@ def test_fractional_margins_offsets_labels_and_registration(scene_document, mode
         expected_width = 2479 if RenderMode.IMPLICIT_MARGINS in mode else 2480
         assert scene.width() == expected_width  # subtraction precedes rounding for implicit extent
         frame = scene.geometry.margin_frame_px
-        assert scene.print_markers[0].pos().x() == pytest.approx((frame.x + scene.x_offset) * 256105/256000)
-        assert scene.print_markers[0].pos().y() == pytest.approx(frame.y * 256105/256000)
-        assert scene.print_markers[3].pos().y() == frame.y  # square's unadjusted anchor; no implicit subtraction
+        assert len(scene.print_markers) == 3
+        factor = 256105/256000 if style == "Bullseye" else 1
+        assert scene.print_markers[0].pos().x() == pytest.approx((frame.x + scene.x_offset) * factor)
+        assert scene.print_markers[0].pos().y() == pytest.approx(frame.y * factor)
         edges = scene.vertical_cut_line_locations[PageType.REGULAR]
         assert scene.document_title_text.x() == round(edges[0])
         expected_y = 2 + 24 + round(max(
@@ -197,6 +202,7 @@ def test_invalid_geometry_rejects_render_then_recovers(scene_document):
                                       document_name="Hidden", draw_page_numbers=True, cut_marker_style="Solid")
     d.page_layout_changed.emit(d.page_layout)
     assert scene.geometry is None and scene.geometry_pending
+    assert not scene.print_markers and scene._registration_profile is None
     assert not scene.card_items and not scene.cut_lines
     assert not scene.page_number_text.isVisible() and not scene.document_title_text.isVisible()
     image = QImage(100, 100, QImage.Format.Format_ARGB32)
@@ -221,6 +227,7 @@ def test_mixed_unavailable_and_direct_action_recovery(scene_document):
     d.pages[0].append(create_card_with_pixmap("Large", CardSizes.OVERSIZED))
     d.endInsertRows()
     assert scene.geometry is None and 'requires' in scene.geometry_unavailable_reason
+    assert not scene.print_markers and scene._registration_profile is None
     with pytest.raises(RuntimeError):
         scene.require_geometry_ready()
     ActionRemoveCards([1], 0).apply(d)  # no final action_applied signal

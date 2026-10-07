@@ -26,8 +26,8 @@ from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.document_page import PageColumns
 from mtg_proxy_printer.model.page_layout import PageLayoutSettings
 from mtg_proxy_printer.model.page_geometry import PageGeometry, build_page_geometry
-from mtg_proxy_printer.page_scene.items import RenderLayers, NeighborsPresent, CardItem, \
-    BullseyeMarkItem, CutMarkSquareItem, CutMarkAngleItem
+from mtg_proxy_printer.page_scene.items import RenderLayers, NeighborsPresent, CardItem
+from mtg_proxy_printer.page_scene.registration_profiles import RegistrationProfile, get_registration_profile
 from mtg_proxy_printer.settings import settings
 from mtg_proxy_printer.units_and_sizes import PageType, unit_registry, distance_to_rounded_px, \
     Quantity
@@ -79,6 +79,8 @@ class PageScene(QGraphicsScene):
         :param parent: Optional Qt parent object
         """
         self.render_mode = render_mode
+        self.print_markers: list[QGraphicsItem] = []
+        self._registration_profile: RegistrationProfile | None = None
         page_layout = document.page_layout
         super().__init__(self.get_document_page_size(page_layout), parent)
         self.document = document
@@ -99,9 +101,7 @@ class PageScene(QGraphicsScene):
         self._update_cut_marker_positions()
         self.document_title_text = self._create_text_item()
         self.page_number_text = self._create_text_item()
-        self.print_markers = self._create_print_marker_items()
         self._refresh_actual_geometry()
-        self._update_print_markers()
         self._update_text_items(page_layout)
         if self.geometry is not None:
             self._draw_cards()
@@ -139,6 +139,7 @@ class PageScene(QGraphicsScene):
         self.row_count = self.column_count = 0
         self._clear_card_items()
         self.remove_cut_markers()
+        self._clear_registration_items()
         self.document_title_text.setVisible(False)
         self.page_number_text.setVisible(False)
 
@@ -173,6 +174,7 @@ class PageScene(QGraphicsScene):
             self._draw_cards()
             self.update_card_bleeds()
             self._update_text_items(self.document.page_layout)
+        self._update_print_markers()
         return True
 
     def _retry_pending_geometry(self, *_):
@@ -208,15 +210,6 @@ class PageScene(QGraphicsScene):
         font.setPointSizeF(font_size)
         item.setFont(font)
         return item
-
-    def _create_print_marker_items(self) -> list[BullseyeMarkItem]:
-        items = [
-            BullseyeMarkItem(False, False), BullseyeMarkItem(True, False), BullseyeMarkItem(False, True),
-            CutMarkSquareItem(), CutMarkAngleItem(False), CutMarkAngleItem(True)
-        ]
-        for item in items:
-            self.addItem(item)
-        return items
 
     def get_background_color(self, render_mode: RenderMode) -> QColor:
         if RenderMode.ON_PAPER in render_mode:
@@ -267,11 +260,25 @@ class PageScene(QGraphicsScene):
 
     @property
     def cut_lines(self) -> list[QGraphicsLineItem]:
-        return list(filter(is_cut_line_item, self.items(SortOrder.AscendingOrder)))
+        return [item for item in self.items(SortOrder.AscendingOrder)
+                if is_cut_line_item(item) and not self._is_registration_item(item)]
 
     @property
     def text_items(self) -> list[QGraphicsSimpleTextItem]:
-        return list(filter(is_text_item, self.items(SortOrder.AscendingOrder)))
+        return [item for item in self.items(SortOrder.AscendingOrder)
+                if is_text_item(item) and not self._is_registration_item(item)]
+
+    def _is_registration_item(self, item: QGraphicsItem) -> bool:
+        # PySide6 6.11.2 parentItem() gives a parentless item Python ownership,
+        # even when its scene owns it. Avoid traversing unrelated card trees.
+        if not any(root == item or root.isAncestorOf(item) for root in self.print_markers):
+            return False
+        ancestor = item
+        while ancestor is not None:
+            if ancestor in self.print_markers:
+                return True
+            ancestor = ancestor.parentItem()
+        return False
 
     @Slot(QPersistentModelIndex)
     def on_current_page_changed(self, selected_page: QPersistentModelIndex):
@@ -316,16 +323,38 @@ class PageScene(QGraphicsScene):
         self.page_number_text.setText(f"{page}/{total_pages}")
 
     def _update_print_markers(self):
-        layout = self.document.page_layout
-        current_style = layout.print_registration_marks_style
+        if self.geometry is None:
+            self._clear_registration_items()
+            return
+        profile = get_registration_profile(self.document.page_layout.print_registration_marks_style)
+        if profile is not self._registration_profile:
+            self._clear_registration_items()
+            self._registration_profile = profile
+            self.print_markers = profile.create_items()
+            for item in self.print_markers:
+                self.addItem(item)
+        profile.place_items(self.print_markers, self.geometry, legacy_x_offset_px=self.x_offset)
+        self._restore_registration_stacking()
 
-        frame = self.full_grid_geometry[PageType.REGULAR].margin_frame_px
-        positions = [QPointF(frame.x + self.x_offset, frame.y),
-                     QPointF(frame.right + self.x_offset, frame.y),
-                     QPointF(frame.x + self.x_offset, frame.bottom)]
-        for item, position in zip(self.print_markers, itertools.cycle(positions)):
-            item.update_visibility(current_style)
-            item.setPos(position)
+    def _clear_registration_items(self):
+        for item in self.print_markers:
+            self.removeItem(item)
+        self.print_markers.clear()
+        self._registration_profile = None
+
+    def _restore_registration_stacking(self):
+        guides = self.cut_lines
+        for root in self.print_markers:
+            parent = root.parentItem()
+            if parent is None:
+                self.addItem(root)  # Restore scene ownership after the binding's parentItem() policy.
+            for guide in guides:
+                guide_parent = guide.parentItem()
+                if guide_parent is None:
+                    self.addItem(guide)
+                if parent == guide_parent and root.zValue() == guide.zValue():
+                    root.stackBefore(guide)
+                    break
 
     @Slot(PageLayoutSettings)
     def on_page_layout_changed(self, new_page_layout: PageLayoutSettings):
@@ -346,8 +375,6 @@ class PageScene(QGraphicsScene):
         self.update_card_positions()
         self.update_card_bleeds()
         self._update_text_items(new_page_layout)
-        self._update_print_markers()
-
         if size_changed:
             # Changed paper dimensions very likely caused the page aspect ratio to change. It may no longer fit
             # in the available space or is now too small, so emit a notification to allow the display widget to adjust.
@@ -598,6 +625,7 @@ class PageScene(QGraphicsScene):
             if self.document.page_layout.cut_marker_draw_above_cards else RenderLayers.CUT_LINES_BELOW
         self._draw_vertical_markers(pen, page_type, layer)
         self._draw_horizontal_markers(pen, page_type, layer)
+        self._restore_registration_stacking()
 
     def _update_cut_marker_positions(self):
         self.vertical_cut_line_locations.clear()
