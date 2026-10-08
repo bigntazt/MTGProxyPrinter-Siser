@@ -1153,24 +1153,198 @@
   },
   "numeric_placement_evidence": {
     "milestone": "M08A",
-    "status": "awaiting_specific_manual_evidence",
-    "recorded_date": "2026-10-07",
+    "status": "software_placement_demonstrated_with_native_and_physical_limitations",
+    "recorded_date": "2026-10-08",
     "accepted_m07_sha": "308eb22e8739e5817c1285b4343603944770b968",
-    "procedure": "doc/architecture/siser-reference.md#next-targeted-leonardo-validation-m08a-acquisition-checklist",
-    "acquisition_root": "references/numeric-placement/<run-id>/",
-    "first_requested_cases": ["letter-portrait", "letter-portrait-shifted"],
-    "deferred_case": "a4-landscape; only after Letter numeric placement succeeds",
-    "incoming_audit": {
-      "locations": ["probes/Probe Marks Enabled/", "probes/Position Records.txt"],
-      "files_checked": 17,
-      "files_matching_preserved_sha256": 17,
-      "new_numeric_placement_artifacts": 0
+    "architect_acceptance": "User-supplied M08A Closeout instructions, 2026-10-08: sufficient manual/software evidence; no further probe exports required",
+    "prior_awaiting_stage": {
+      "milestone": "M08A",
+      "status": "awaiting_specific_manual_evidence",
+      "recorded_date": "2026-10-07",
+      "accepted_m07_sha": "308eb22e8739e5817c1285b4343603944770b968",
+      "procedure": "doc/architecture/siser-reference.md#next-targeted-leonardo-validation-m08a-acquisition-checklist",
+      "acquisition_root": "references/numeric-placement/<run-id>/",
+      "first_requested_cases": [
+        "letter-portrait",
+        "letter-portrait-shifted"
+      ],
+      "deferred_case": "a4-landscape; only after Letter numeric placement succeeds",
+      "incoming_audit": {
+        "locations": [
+          "probes/Probe Marks Enabled/",
+          "probes/Position Records.txt"
+        ],
+        "files_checked": 17,
+        "files_matching_preserved_sha256": 17,
+        "new_numeric_placement_artifacts": 0
+      },
+      "native_interaction": "Unavailable: native computer controls disabled in enabled automation surface; no Leonardo operation performed",
+      "acquisitions": [],
+      "native_observations": null,
+      "pdf_measurements": null,
+      "software_placement_demonstrated": false,
+      "production_m08_gate": "pending architect review; numeric restoration, cut correspondence, persistence and repeatability not established"
     },
-    "native_interaction": "Unavailable: native computer controls disabled in enabled automation surface; no Leonardo operation performed",
-    "acquisitions": [],
-    "native_observations": null,
-    "pdf_measurements": null,
-    "software_placement_demonstrated": false,
-    "production_m08_gate": "pending architect review; numeric restoration, cut correspondence, persistence and repeatability not established"
+    "archives": [
+      {
+        "received_filename": "Letter Shifted Pair Evidence.zip",
+        "sha256": "d07f18b9e984d3b96c08c548ffed525737fa1595b59116aba5588057abb48923",
+        "verified_date": "2026-10-08",
+        "source_location": "probes/Probe Marks Enabled/Letter Shifted Pair Evidence.zip"
+      },
+      {
+        "received_filename": "Letter Shifted Pair Evidence-Repeat.zip",
+        "sha256": "b05573625d8062453d5c83ee04020e2a16542e6952c77f1fa15b968a8ffc6e2c",
+        "verified_date": "2026-10-08",
+        "source_location": "probes/Probe Marks Enabled/Letter Shifted Pair Evidence-Repeat.zip"
+      },
+      {
+        "received_filename": "2- A4 Landscape Pair Evidence.zip",
+        "sha256": "dd96f95182a81bc757c74db26dec7dda01df6332958a1b7dba2a3be1922f1e1a",
+        "verified_date": "2026-10-08",
+        "source_location": "probes/Probe Marks Enabled/2- A4 Landscape Pair Evidence.zip"
+      }
+    ],
+    "acquisitions": [
+      {
+        "id": "letter-base-initial",
+        "source_probe_id": "letter-portrait",
+        "source_archive": "Letter Shifted Pair Evidence.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/letter-base-initial/Letter Base Pair Evidence.pdf",
+          "sha256": "4f013ace07afc3483cad7154e9e746c6f3e59ecf799cd8e66440e2e58687174c",
+          "received_filename": "Letter Base Pair Evidence.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/letter-base-initial/Letter Base Pair Evidence.lds",
+          "sha256": "afda7e3a67aab0167d99159c911c44afc6f7a8a8427d798591a1dd7db01e8d04",
+          "received_filename": "Letter Base Pair Evidence.lds"
+        }
+      },
+      {
+        "id": "letter-shifted-initial",
+        "source_probe_id": "letter-portrait-shifted",
+        "source_archive": "Letter Shifted Pair Evidence.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/letter-shifted-initial/Letter Shifted Pair Evidence.pdf",
+          "sha256": "ad5b727da80518ceeb70fc9e78e00e184bfca4cfd5a75b06f668554d0e01adce",
+          "received_filename": "Letter Shifted Pair Evidence.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/letter-shifted-initial/Letter Shifted Pair Evidence.lds",
+          "sha256": "552726fc8a356324fd9c986ad6c50cfbfdaa4bd073b16ca625679bfe28163573",
+          "received_filename": "Letter Shifted Pair Evidence.lds"
+        }
+      },
+      {
+        "id": "letter-base-repeat",
+        "source_probe_id": "letter-portrait",
+        "source_archive": "Letter Shifted Pair Evidence-Repeat.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/letter-base-repeat/Letter Base Pair Evidence-Repeat.pdf",
+          "sha256": "4f013ace07afc3483cad7154e9e746c6f3e59ecf799cd8e66440e2e58687174c",
+          "received_filename": "Letter Base Pair Evidence-Repeat.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/letter-base-repeat/Letter Base Pair Evidence-Repeat.lds",
+          "sha256": "2c523a524c150a6e59c3fb8f67047135c0b8054721ec4c6c97c237baacc356ef",
+          "received_filename": "Letter Base Pair Evidence-Repeat.lds"
+        }
+      },
+      {
+        "id": "letter-shifted-repeat",
+        "source_probe_id": "letter-portrait-shifted",
+        "source_archive": "Letter Shifted Pair Evidence-Repeat.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/letter-shifted-repeat/Letter Shifted Pair Evidence-Repeat.pdf",
+          "sha256": "ad5b727da80518ceeb70fc9e78e00e184bfca4cfd5a75b06f668554d0e01adce",
+          "received_filename": "Letter Shifted Pair Evidence-Repeat.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/letter-shifted-repeat/Letter Shifted Pair Evidence-Repeat.lds",
+          "sha256": "412bd561c08bc9c12664880688e310120bd4ef2c60ff8a024caa18954293adfd",
+          "received_filename": "Letter Shifted Pair Evidence-Repeat.lds"
+        }
+      },
+      {
+        "id": "a4-page-before-import",
+        "source_probe_id": "a4-landscape",
+        "source_archive": "2- A4 Landscape Pair Evidence.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/a4-page-before-import/1- A4 Landscape Pair Evidence.pdf",
+          "sha256": "f5dc9ebafee8797fc9896c8e9936f2c297bf7e3a3792cd6a6073096630b0f9d3",
+          "received_filename": "1- A4 Landscape Pair Evidence.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/a4-page-before-import/1- A4 Landscape Pair Evidence.lds",
+          "sha256": "958b9af6ac10ba35cb5f411492071315ed490f391c3c17a793a2187756386e47",
+          "received_filename": "1- A4 Landscape Pair Evidence.lds"
+        }
+      },
+      {
+        "id": "a4-page-after-import",
+        "source_probe_id": "a4-landscape",
+        "source_archive": "2- A4 Landscape Pair Evidence.zip",
+        "provenance": "Wayne acquisition; supplied architect-accepted closeout 2026-10-08; no agent native operation",
+        "print_output": {
+          "path": "references/numeric-placement/a4-page-after-import/2- A4 Landscape Pair Evidence.pdf",
+          "sha256": "f5dc9ebafee8797fc9896c8e9936f2c297bf7e3a3792cd6a6073096630b0f9d3",
+          "received_filename": "2- A4 Landscape Pair Evidence.pdf"
+        },
+        "native_project": {
+          "path": "references/numeric-placement/a4-page-after-import/2- A4 Landscape Pair Evidence.lds",
+          "sha256": "aba7fc415e973100b1444016a6d76da0d84b3a1b5c417db465311c9c1cdd7238",
+          "received_filename": "2- A4 Landscape Pair Evidence.lds"
+        }
+      }
+    ],
+    "pdf_measurements": {
+      "path": "numeric-placement-measurements.json",
+      "sha256": "617b041d93d6caf0d07412511aac435ead424e716bf552d953ac01cdd48db2fe"
+    },
+    "measurement_tolerance_mm": 0.001,
+    "software_placement_demonstrated": true,
+    "native_observations": {
+      "classification": "operator_reported; not independently decoded from LDS or operated by agent",
+      "operator": "Wayne",
+      "leonardo_version": "1.1.31",
+      "edition": null,
+      "selected_software_cutter_profile": null,
+      "top_increases_downward": true,
+      "print_originals_and_matching_duplicate_cut_paths": true,
+      "fresh_letter_repeat_imports": true,
+      "cut_preview": "Intended contours; no rearrangement; observed one-pass setting, not a universal default or hardware recommendation",
+      "reopening_scope": "Initial Letter document geometry/page configuration retained according to operator; do not infer extra reopening tests",
+      "operational_cut_settings": "Operator reports last-used settings regardless of project loaded; LDS must not be treated as a complete reproducible cutting preset; storage scope/mechanism unknown",
+      "a4_initial_display_inches": {
+        "page_before_import": [
+          1.689,
+          3.283
+        ],
+        "page_after_import": [
+          1.535,
+          1.417
+        ]
+      },
+      "a4_reported_numeric_entry_inches": [
+        "1.37795953",
+        ".984252"
+      ],
+      "a4_reported_entry_mm": [
+        35.000172062,
+        25.0000038
+      ],
+      "a4_reported_entry_vs_pdf_x_difference_mm": 0.0001599786667,
+      "entry_difference_explanation": null,
+      "input_quantization": null,
+      "display_precision_inches": 0.001
+    },
+    "prior_architect_review": "pypdf plus independent pdfplumber measurement and Poppler render inspection, as supplied in closeout; local reproduction recorded separately",
+    "production_m08_gate": "external marks/independent-page alignment, camera anchors/clear zones, active profile, physical print/cut qualification, Romeo and contours-only behavior remain pending"
   }
 }

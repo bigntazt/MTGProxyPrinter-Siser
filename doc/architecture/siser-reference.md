@@ -1,6 +1,6 @@
 # M02: Leonardo reference and SVG import evidence
 
-**Status: Complete investigation with two workflow findings; numeric restoration pending and M08 gated.** Recorded 2026-10-05,
+**Status: M02 findings preserved; M08A numeric placement demonstrated for acquired Letter/A4 workflows; production M08 gated.** Historical M02 recorded 2026-10-05,
 America/Los_Angeles. Six user-exported PDFs have been preserved and measured.
 Three native .lds projects and two settings screenshots are preserved. These
 measurements do not establish a general registration specification.
@@ -340,6 +340,9 @@ separately. `references/** -text` preserves acquisition bytes in Git.
 
 ## Next targeted Leonardo validation (M08A acquisition checklist)
 
+This is the historical checklist used for the accepted M08A acquisitions. The
+2026-10-08 closeout below supersedes its pending requests; no further exports are required.
+
 Execute this existing five-step procedure for **Letter base and shifted first**.
 Defer A4 landscape until the Letter numeric method succeeds; defer Romeo, alternate
 mark-spacing matrices and unrelated paper configurations. This was not an M04 dependency.
@@ -395,7 +398,9 @@ imports with different occupied bounds remain separate gates. **M08 stays closed
 The architecture remains MTGProxyPrinter print/PDF output plus a matching cut
 job; diagnostic success does not switch the product to Leonardo-hosted printing.
 
-## M08A status — awaiting specific manual evidence
+## Historical M08A pre-acquisition status (2026-10-07)
+
+The following records the awaiting-evidence stage, superseded by the closeout below.
 
 Recorded 2026-10-07. Architect-accepted M07
 `308eb22e8739e5817c1285b4343603944770b968` was fast-forwarded into `siser-dev`
@@ -455,3 +460,146 @@ print/cut geometry and roles/preview; save/reopen preservation and fresh-import
 repeatability; then A4 landscape confirmation. External marks, camera anchors,
 clear zones, print scale/skew, Juliet alignment, Romeo equivalence and contours-only
 alignment remain separate gates. **Production M08 remains gated for architect review.**
+
+## M08A closeout — software placement demonstrated (2026-10-08)
+
+The architect accepted the supplied manual/software evidence as sufficient to close
+the numeric-placement investigation. No further Letter/A4 acquisitions or physical
+jobs are requested. Closeout stays on `milestone/m08a-leonardo-placement`, unmerged
+for architect review; `siser-dev` remains accepted M07 and `trunk` is unchanged.
+
+### Preservation and provenance
+
+Three incoming archives under `probes/Probe Marks Enabled/` were locally verified:
+
+| Received archive | SHA-256 |
+|---|---|
+| Letter Shifted Pair Evidence.zip | `d07f18b9e984d3b96c08c548ffed525737fa1595b59116aba5588057abb48923` |
+| Letter Shifted Pair Evidence-Repeat.zip | `b05573625d8062453d5c83ee04020e2a16542e6952c77f1fa15b968a8ffc6e2c` |
+| 2- A4 Landscape Pair Evidence.zip | `dd96f95182a81bc757c74db26dec7dda01df6332958a1b7dba2a3be1922f1e1a` |
+
+Twelve original files (six PDF/LDS pairs) are preserved byte-for-byte under
+`references/numeric-placement/`: `letter-base-initial`, `letter-shifted-initial`,
+`letter-base-repeat`, `letter-shifted-repeat`, `a4-page-before-import` and
+`a4-page-after-import`. Received filenames, archive identities, individual digests
+and operator provenance are in the manifest. Identical PDFs retain separate run
+records. Incoming archives remain untouched. The three SVGs, eleven historical and
+seven prior Artwork Only acquisitions, their hashes and manifest evidence tracks
+are unchanged. The earlier awaiting section is preserved as `prior_awaiting_stage`.
+
+### Locally reproduced printed geometry
+
+`measure_numeric_placement_outputs.py` explicitly handles the acquired one-page
+Future Corp vector structure: one page transform, four closed filled artwork paths
+and eight filled registration bars. It rejects images, forms and unexpected operators.
+It resolves every line vertex and circle quarter-Bezier control/endpoint into top-left
+millimetres, checks source dimensions/relative geometry/orientation, and records full
+precision in `numeric-placement-measurements.json`. Circle checks include bounds,
+center/radius and the four known quarter-curve controls; no general PDF parser or
+LDS geometry decoder was built. Independent pdfplumber object bounds agree locally.
+
+| Run | Rectangle left/top, mm | Rectangle width/height, mm |
+|---|---|---|
+| Letter base, initial and repeat | 25.000002917 / 35.000012083 | 30.000003500 × 20.000002333 |
+| Letter shifted, initial and repeat | 37.000008317 / 43.999994133 | 29.999999500 × 20.000002333 |
+| A4, both setup orders | 35.000012083 / 25.000002917 | 30.000003500 × 20.000002333 |
+
+Every acquired PDF has all four vector shapes, including the L, and eight bars.
+The rectangle, circle, triangle and L match their authored paths within **0.001 mm**;
+this is a file-coordinate tolerance, not hardware accuracy. Both Letter pairs show
+12 mm right / 9 mm down displacement at every corresponding path point within that
+tolerance, with identical page-relative bars. The complete Letter bounds remain
+approximately 144 × 173 mm. A4 bounds are approximately
+`(35.000012083, 25.000002917, 219.000017550, 138.000016100)` mm.
+
+Letter PDFs have 612 × 792 pt MediaBox/CropBox (215.9 × 279.4 mm), zero rotation and
+default UserUnit. A4 has 841.799988 × 595.200012 pt, representing
+296.968329100 × 209.973337567 mm; nominal requested A4 is 297 × 210 mm. The record
+separates requested paper, unknown exact accepted native dimensions, emitted boxes,
+explicit versus inherited/default boxes, UserUnit, rotation and transforms. There
+is no Qt rounding allowance or compensating artwork offset in this assessment.
+
+The locally verified identity comparisons are:
+
+| Separate acquisitions with identical PDF bytes | SHA-256 |
+|---|---|
+| Letter base initial/repeat | `4f013ace07afc3483cad7154e9e746c6f3e59ecf799cd8e66440e2e58687174c` |
+| Letter shifted initial/repeat | `ad5b727da80518ceeb70fc9e78e00e184bfca4cfd5a75b06f668554d0e01adce` |
+| A4 page-before/page-after import | `f5dc9ebafee8797fc9896c8e9936f2c297bf7e3a3792cd6a6073096630b0f9d3` |
+
+Base and shifted Letter PDFs are different; corresponding initial/repeat files
+match. This differs from the earlier uncorrected Artwork Only base/shifted pair,
+whose identical PDFs demonstrated lost source translation rather than restoration.
+
+### Operator-reported native observations and limitations
+
+Wayne reports Leonardo **1.1.31**, increasing Top/y moves down, print originals
+with matching duplicate cut paths, fresh imports for the Letter repeats, intended
+contours in cut preview without rearrangement, and an observed one-pass cutting
+setting. Initial Letter projects retained document geometry/page configuration on
+reopening. These are operator observations; no agent native interaction or extra
+reopening tests occurred, and printed PDFs do not measure nonprinting cut geometry.
+Edition and the selected software cutter profile remain unconfirmed; owning a Juliet
+does not prove which software profile was active.
+
+For A4, page-before-import initially displayed Left/Top **1.689 / 3.283 inches**;
+page-after-import displayed **1.535 / 1.417 inches**. Wayne reports entering the
+literal values **`1.37795953 / .984252` inches** in both corrected runs. The reported
+X converts to 35.000172062 mm, versus measured PDF X approximately 35.000012083 mm.
+The roughly 0.00016 mm difference is unexplained; no mechanism is inferred and no
+new acquisition is required. These differing initial positions do not define a
+universal centering rule. Both final corrected outputs are identical.
+
+The exported PDFs preserve finer coordinates than a three-decimal inch display.
+Display precision does not establish input quantization. Conditional .001-inch
+input-error bounds in the historical checklist are not asserted for these files.
+
+**Cutting-parameter persistence is distinct from document persistence.** Wayne
+reports that operational cut settings follow last-used settings regardless of the
+project loaded. Loading an LDS does not establish restoration of an intended cutting
+preset. Exact storage scope/mechanism is unknown. The one-pass observation is neither
+a universal default nor a physical recommendation. Later qualification must record
+active cutting parameters at each job, not infer them from a project save.
+
+### Validation reproduced for closeout
+
+Tools: project CPython 3.13.14 for fixture verification; existing bundled CPython
+3.12.14, pypdf 6.10.0 and pdfplumber 0.11.9 for measurements. No installs/upgrades.
+From repository root:
+
+```powershell
+.\venv\Scripts\python.exe tests/data/print_cut/siser/verify_fixtures.py
+& 'C:\Users\mitch\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  tests/data/print_cut/siser/measure_numeric_placement_outputs.py --check
+git diff --check
+```
+
+The verifier passes source geometry/hashes, all 30 acquired files (11 historical,
+7 prior Artwork Only, 12 new), six numeric run identities and the measurement-record
+digest. Measurement reproduction passes all six PDFs, every artwork path, eight bars
+per PDF, three byte-identity comparisons, both Letter translation checks and independent
+pdfplumber bounds. Manifest consistency checks compare every pre-existing top-level
+section with the preceding commit and preserve the earlier awaiting record. Archive
+SHA-256 verification and extracted-member equality were also performed locally.
+
+The architect's supplied review independently measured with pypdf/pdfplumber and
+inspected Poppler renders. That earlier visual review is distinct from this agent's
+local numeric reproduction; no new visual-rendering matrix was required or performed.
+Application geometry, scene, registration, settings/serialization, export/native-print,
+image/cache, network and full pytest suites were skipped as unrelated. No LDS reverse
+engineering, dependency change, application-module change or physical job occurred.
+
+### Tested workflow and remaining production gates
+
+The demonstrated workflow is Artwork Only import, explicit complete-artwork placement
+after final page configuration, matching print originals/duplicate cut contours,
+Print & Cut/Page Marks, then export. Recheck geometry after subsequent page/mark-setting
+changes. Print/cut correspondence, preview and reopening have the operator qualifications
+above. Letter fresh-import repeatability has supplied provenance and matching PDFs;
+both A4 setup orders reach the same final geometry. The software prerequisite is closed.
+
+Production M08 remains gated: external-mark handling and independent-page alignment;
+camera-anchor semantics/clear zones; active cutter/profile qualification; physical
+print scale/skew and cut alignment/repeatability; Romeo equivalence and contours-only
+behavior. No Siser marks/profile, guessed anchors, import compensation, calibration UI,
+M08 production implementation or M09 exporter work is included in this closeout.

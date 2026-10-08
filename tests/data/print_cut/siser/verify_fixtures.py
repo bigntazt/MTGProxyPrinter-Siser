@@ -41,6 +41,40 @@ def verify():
             followup_count += check_artifact(run["native_project"])
         assert followup["runs"][0]["print_output"]["sha256"] == followup["runs"][1]["print_output"]["sha256"]
         print(f"PASS Artwork Only follow-up: {followup_count} acquired artifacts; Letter PDFs byte-identical")
+    numeric = manifest.get("numeric_placement_evidence")
+    if numeric and numeric.get("acquisitions"):
+        assert numeric["software_placement_demonstrated"] is True
+        assert numeric["status"] == "software_placement_demonstrated_with_native_and_physical_limitations"
+        runs = {run["id"]: run for run in numeric["acquisitions"]}
+        assert len(runs) == 6 and set(runs) == {
+            "letter-base-initial", "letter-shifted-initial", "letter-base-repeat", "letter-shifted-repeat",
+            "a4-page-before-import", "a4-page-after-import"}
+        assert len(numeric["archives"]) == 3
+        archives = {archive["received_filename"] for archive in numeric["archives"]}
+        numeric_count = 0
+        for run in runs.values():
+            assert run["source_archive"] in archives
+            assert run["source_probe_id"] in {case["id"] for case in manifest["cases"]}
+            for artifact in (run["print_output"], run["native_project"]):
+                assert artifact["path"].startswith(f"references/numeric-placement/{run['id']}/")
+                assert Path(artifact["path"]).name == artifact["received_filename"]
+                numeric_count += check_artifact(artifact)
+        check_artifact(numeric["pdf_measurements"])
+        measurements = json.loads((ROOT / numeric["pdf_measurements"]["path"]).read_text())
+        assert measurements["tolerance_mm"] == numeric["measurement_tolerance_mm"] == 0.001
+        assert {output["id"] for output in measurements["outputs"]} == set(runs)
+        for output in measurements["outputs"]:
+            assert output["source_pdf"] == runs[output["id"]]["print_output"]
+            assert len(output["artwork"]) == 4 and len(output["registration_bars"]) == 8
+            assert [shape["shape_id"] for shape in output["artwork"]] == ["rectangle", "circle", "triangle", "ell"]
+        for left, right in (("letter-base-initial", "letter-base-repeat"),
+                            ("letter-shifted-initial", "letter-shifted-repeat"),
+                            ("a4-page-before-import", "a4-page-after-import")):
+            assert (ROOT / runs[left]["print_output"]["path"]).read_bytes() == \
+                (ROOT / runs[right]["print_output"]["path"]).read_bytes()
+        assert runs["letter-base-initial"]["print_output"]["sha256"] != \
+            runs["letter-shifted-initial"]["print_output"]["sha256"]
+        print(f"PASS numeric placement: {numeric_count} acquired artifacts, measured record hash, six run identities")
     for reference in manifest.get("initial_reference_outputs", []):
         reference_count += check_artifact(reference["print_output"])
         reference_count += check_artifact(reference["native_project"])
