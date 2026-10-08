@@ -1305,7 +1305,7 @@
     ],
     "pdf_measurements": {
       "path": "numeric-placement-measurements.json",
-      "sha256": "617b041d93d6caf0d07412511aac435ead424e716bf552d953ac01cdd48db2fe"
+      "sha256": "fd0b506a6de7b7058eff156368af499963890338351267e9c034c0d1006dcea4"
     },
     "measurement_tolerance_mm": 0.001,
     "software_placement_demonstrated": true,
@@ -1337,7 +1337,7 @@
       ],
       "a4_reported_entry_mm": [
         35.000172062,
-        25.0000038
+        25.0000008
       ],
       "a4_reported_entry_vs_pdf_x_difference_mm": 0.0001599786667,
       "entry_difference_explanation": null,

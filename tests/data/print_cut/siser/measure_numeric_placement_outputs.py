@@ -43,6 +43,7 @@ def measure_run(run, expected):
     reader = PdfReader(path)
     assert len(reader.pages) == 1
     page = reader.pages[0]
+    explicit_page_boxes = [key for key in ('/MediaBox', '/CropBox', '/BleedBox', '/TrimBox', '/ArtBox') if key in page]
     assert page.get('/Rotate', 0) == 0 and page.get('/UserUnit', 1) == 1
     assert list(page.mediabox) == list(page.cropbox)
     ops = ContentStream(page.get_contents(), reader).operations
@@ -134,7 +135,7 @@ def measure_run(run, expected):
         'requested_page_mm': expected['page_mm'], 'accepted_native_page_mm': None,
         'page_boxes_pt': {key: list(map(float, getattr(page, key)))
                           for key in ('mediabox', 'cropbox', 'bleedbox', 'trimbox', 'artbox')},
-        'explicit_page_boxes': [key for key in ('/MediaBox', '/CropBox', '/BleedBox', '/TrimBox', '/ArtBox') if key in page],
+        'explicit_page_boxes': explicit_page_boxes,
         'emitted_page_mm': [float(page.mediabox.width)*PT_TO_MM, float(page.mediabox.height)*PT_TO_MM],
         'rotation_degrees': int(page.get('/Rotate', 0)), 'rotation_explicit': '/Rotate' in page,
         'user_unit': float(page.get('/UserUnit', 1)), 'user_unit_explicit': '/UserUnit' in page,

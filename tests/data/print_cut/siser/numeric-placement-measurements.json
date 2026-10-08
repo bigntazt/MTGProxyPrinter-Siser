@@ -52,11 +52,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         215.89999999999998,
@@ -833,11 +829,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         215.89999999999998,
@@ -1614,11 +1606,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         215.89999999999998,
@@ -2395,11 +2383,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         215.89999999999998,
@@ -3176,11 +3160,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         296.96832909999995,
@@ -3957,11 +3937,7 @@
         ]
       },
       "explicit_page_boxes": [
-        "/MediaBox",
-        "/CropBox",
-        "/BleedBox",
-        "/TrimBox",
-        "/ArtBox"
+        "/MediaBox"
       ],
       "emitted_page_mm": [
         296.96832909999995,

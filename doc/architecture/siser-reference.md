@@ -603,3 +603,15 @@ camera-anchor semantics/clear zones; active cutter/profile qualification; physic
 print scale/skew and cut alignment/repeatability; Romeo equivalence and contours-only
 behavior. No Siser marks/profile, guessed anchors, import compensation, calibration UI,
 M08 production implementation or M09 exporter work is included in this closeout.
+
+### M08A metadata correction (2026-10-08)
+
+Capture explicit PDF page-box keys before pypdf materializes defaults. All six
+acquisitions explicitly contain only `/MediaBox`; effective box coordinates and
+all measured geometry remain unchanged. Correct the reported `.984252` inch
+conversion to 25.0000008 mm, retaining the original entry strings and the
+unexplained reported-X versus measured-X difference. Regeneration with the
+documented bundled interpreter, measurement `--check`, fixture verification,
+and `git diff --check` passed. Comparing the regenerated record with its committed
+predecessor after removing explicit-box lists showed exact equality. No
+application tests or new acquisition were required.
