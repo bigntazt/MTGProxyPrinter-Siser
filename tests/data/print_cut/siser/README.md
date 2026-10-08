@@ -135,11 +135,38 @@ reproduced PDF values and supplied native observations. Historical direct Print
 & Cut evidence remains separate. The verifier covers 11 historical plus seven
 follow-up acquisitions; source SVGs remain unchanged.
 
-The **next targeted validation** is the report's five-step procedure: verify
+The **next targeted validation (M08A)** is the report's five-step procedure: verify
 coordinate origin/anchor and units; restore the complete four-shape group using
 source-derived page targets; duplicate and verify print/cut geometry; save/reopen;
 and repeat from fresh imports, proving the corrected +12/+9 mm Letter shift.
 Include the initially off-page L object. Do not resize, guess offsets, or assume
 X/Y is page-relative. Record numeric-entry versus display precision. This is a
-later handoff; M04 requires no new acquisition, Leonardo operation, print, or cut.
-M08 registration and physical alignment remain gated.
+manual acquisition; it was not an M04 dependency. Start with Letter base and shifted
+only; defer A4 landscape until that numeric method succeeds. Return four PDF/LDS pairs
+(`letter-base-initial`, `letter-shifted-initial`, `letter-base-repeat`,
+`letter-shifted-repeat`) and before/after placement, Page Marks, reopen and repeat
+records. Include actual settings, coordinate conventions, input/display precision,
+both groups' print/cut assignments and complete cut preview. Do not send a job.
+
+## M08A current state: awaiting manual evidence
+
+Accepted M07 `308eb22e8739e5817c1285b4343603944770b968` has been integrated
+and pushed to `siser-dev`. New work is on the unmerged
+`milestone/m08a-leonardo-placement` branch. All 17 incoming files in
+`probes/Probe Marks Enabled/` and `probes/Position Records.txt` match existing
+preserved hashes; no corrected numeric-placement acquisition is present. Native
+Leonardo interaction is unavailable because the enabled automation surface has no
+native computer controls. Numeric restoration, print/cut correspondence and persistence
+remain unverified; M08A is not complete.
+
+Use the existing five-step checklist in the
+[report](../../../../doc/architecture/siser-reference.md#next-targeted-leonardo-validation-m08a-acquisition-checklist).
+For a verified page-relative top-left anchor, Letter group targets are `(25,35)`
+and `(37,44)` mm, with unchanged `144 × 173` mm bounds. Those bounds are checks,
+not resize instructions. Center-anchor targets and alternate-origin requirements
+are in that same procedure. Preserve new original files under
+`references/numeric-placement/<run-id>/`; the manifest's separate
+`numeric_placement_evidence` section currently has no acquisitions or observations.
+The verifier needs no extension until records are acquired. Historical findings,
+source probes and acquisition bytes/digests are unchanged. No application test
+matrix was rerun. Production M08 and physical alignment remain gated.

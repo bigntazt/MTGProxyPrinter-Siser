@@ -1150,5 +1150,27 @@
       "received_filename": "probes/Position Records.txt"
     },
     "letter_pair_byte_identical": true
+  },
+  "numeric_placement_evidence": {
+    "milestone": "M08A",
+    "status": "awaiting_specific_manual_evidence",
+    "recorded_date": "2026-10-07",
+    "accepted_m07_sha": "308eb22e8739e5817c1285b4343603944770b968",
+    "procedure": "doc/architecture/siser-reference.md#next-targeted-leonardo-validation-m08a-acquisition-checklist",
+    "acquisition_root": "references/numeric-placement/<run-id>/",
+    "first_requested_cases": ["letter-portrait", "letter-portrait-shifted"],
+    "deferred_case": "a4-landscape; only after Letter numeric placement succeeds",
+    "incoming_audit": {
+      "locations": ["probes/Probe Marks Enabled/", "probes/Position Records.txt"],
+      "files_checked": 17,
+      "files_matching_preserved_sha256": 17,
+      "new_numeric_placement_artifacts": 0
+    },
+    "native_interaction": "Unavailable: native computer controls disabled in enabled automation surface; no Leonardo operation performed",
+    "acquisitions": [],
+    "native_observations": null,
+    "pdf_measurements": null,
+    "software_placement_demonstrated": false,
+    "production_m08_gate": "pending architect review; numeric restoration, cut correspondence, persistence and repeatability not established"
   }
 }

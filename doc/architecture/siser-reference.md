@@ -338,12 +338,20 @@ remain unchanged. No unidentified profile observations populate planned
 Juliet/Romeo runs. The fixture verifier reports historical and follow-up counts
 separately. `references/** -text` preserves acquisition bytes in Git.
 
-## Next targeted Leonardo validation (later execution, not an M04 dependency)
+## Next targeted Leonardo validation (M08A acquisition checklist)
+
+Execute this existing five-step procedure for **Letter base and shifted first**.
+Defer A4 landscape until the Letter numeric method succeeds; defer Romeo, alternate
+mark-spacing matrices and unrelated paper configurations. This was not an M04 dependency.
 
 1. **Establish coordinates.** Record actual version/edition, selected cutter
    profile, page size/orientation, material/work-area mode/dimensions, units,
    selected inspector anchor, whether X/Y is page- or work-area-relative, and
-   whether bounds include strokes. Verify conventions before numeric placement.
+   whether bounds include strokes. Record numeric-entry precision separately from
+   display precision, Page Marks/custom spacing and Small Page Margins settings.
+   Verify conventions before numeric placement; do not assume displayed X/Y is
+   page-relative. If an edition/profile field is not available, record that fact
+   and the visible cutter selection rather than guessing.
 2. **Restore the complete imported group.** Fresh Artwork Only imports must
    include all four shapes, including off-page objects. Preserve dimensions and
    relative geometry. With a verified page-relative top-left anchor, use:
@@ -366,7 +374,11 @@ separately. `references/** -text` preserves acquisition bytes in Git.
    both groups. Export PDF, save LDS, close/reopen, inspect numeric geometry and
    cut preview without sending a job. Repeat from fresh imports. Corrected Letter
    PDFs must show a 12 mm right / 9 mm down translation; byte-identical corrected
-   exports would fail this check.
+   exports would fail this check. Return four separately named PDF/LDS pairs:
+   `letter-base-initial`, `letter-shifted-initial`, `letter-base-repeat`, and
+   `letter-shifted-repeat`. Retain the original filenames and supply screenshots
+   or precise records before placement, after placement/Page Marks, after reopening,
+   and on the repeat; record both print and cut groups and the complete cut preview.
 5. **Software acceptance.** Check every shape's dimensions/page coordinates,
    relative geometry, restored L object, PDF boxes/orientation/transforms,
    corresponding native print/cut geometry, unchanged page-relative bars, and
@@ -382,3 +394,64 @@ Juliet alignment/repeatability, Romeo equivalence, and Cut Only / contours-only
 imports with different occupied bounds remain separate gates. **M08 stays closed.**
 The architecture remains MTGProxyPrinter print/PDF output plus a matching cut
 job; diagnostic success does not switch the product to Leonardo-hosted printing.
+
+## M08A status — awaiting specific manual evidence
+
+Recorded 2026-10-07. Architect-accepted M07
+`308eb22e8739e5817c1285b4343603944770b968` was fast-forwarded into `siser-dev`
+and pushed from accepted M06 `37665618874bacfdb5483efda2e78a137899ae76`.
+New evidence/documentation work is on `milestone/m08a-leonardo-placement`, left
+unmerged for architect review. Local and remote `trunk` remain
+`00202f988bef071c7070967e86c1490cb19114ba`. Accepted M07 tests were not rerun.
+
+The incoming `probes/Probe Marks Enabled/` folder (16 files) and
+`probes/Position Records.txt` were checked by SHA-256 against the existing manifest.
+All 17 incoming files match previously preserved acquisitions. No new numeric-placement
+observations or PDF/LDS pairs were found there or under the reference directories.
+Original acquisitions and recorded digests are unchanged; nothing incoming was absorbed
+into this commit. Historical direct Print & Cut raster reduction and the later Artwork
+Only preserved-size/lost-translation finding remain distinct evidence tracks.
+
+Native computer controls are disabled in the available automation surface. No native
+Leonardo operation, cut preview or save/reopen check was performed; an unavailable
+interface was not repeatedly attempted. This milestone is **awaiting specific manual
+evidence**, not complete and not a demonstrated negative result for numeric placement.
+
+Wayne's next manual operation is the five-step checklist immediately above, beginning
+with both Letter probes and a verified coordinate origin/anchor. Preserve all four
+shapes, including the initially off-page L, and use the authored numeric targets without
+resizing or remembered offsets. Return the four Letter PDF/LDS pairs plus the stage
+records, actual settings, print/cut roles, preview and reopen observations. Keep new
+acquisitions separate under `references/numeric-placement/<run-id>/`; received original
+filenames, provenance and SHA-256 digests will be recorded on acquisition.
+
+`manifest.json` now has a separate `numeric_placement_evidence` section with an
+awaiting-evidence status, empty acquisitions and null native/PDF observations. Those
+fields do not claim measurements or infer hidden cut coordinates from printed PDFs.
+The verifier and measurement code were not changed because no new output exists to
+measure. Requested paper dimensions, accepted Leonardo dimensions and emitted PDF
+dimensions must be recorded separately when evidence arrives; Qt export allowances
+are not Leonardo tolerances. Display rounding alone does not establish input precision.
+
+Checks performed from the repository root:
+
+```powershell
+.\venv\Scripts\python.exe tests/data/print_cut/siser/verify_fixtures.py
+git diff --check
+```
+
+The fixture verifier passed all three source-probe geometries/hashes, the authored
+12 mm/right and 9 mm/down translation, unit relations, 11 historical artifacts and
+seven Artwork Only artifacts. A read-only SHA-256 inventory matched all 17 incoming
+files to recorded artifacts. Manifest preservation/consistency checks confirmed every
+pre-existing section unchanged, no acquired numeric runs, and null observations.
+No new PDF measurements were performed. Application geometry, scene, registration,
+settings/serialization, export/native-print, image/cache and network tests were skipped
+as outside this documentation/acquisition scope. No physical print/cut job was sent.
+
+Still missing: established coordinate conventions and input precision; restored
+Letter translation in measured PDFs; all four shapes and L correspondence; native
+print/cut geometry and roles/preview; save/reopen preservation and fresh-import
+repeatability; then A4 landscape confirmation. External marks, camera anchors,
+clear zones, print scale/skew, Juliet alignment, Romeo equivalence and contours-only
+alignment remain separate gates. **Production M08 remains gated for architect review.**
