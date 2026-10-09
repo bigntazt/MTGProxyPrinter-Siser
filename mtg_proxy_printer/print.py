@@ -25,7 +25,7 @@ try:
 except ImportError:  # Py <3.13 compatibility
     from os import cpu_count as process_cpu_count
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QGraphicsScene
 from PySide6.QtCore import QObject, QMarginsF, QSizeF, Signal, QSize, Slot, QPersistentModelIndex, QThreadPool, QRectF, Qt
 from PySide6.QtGui import QPainter, QPdfWriter, QPageSize, QImage, QColor, QPageLayout
 from PySide6.QtPrintSupport import QPrinter
@@ -65,7 +65,14 @@ def _render_page(scene: PageScene, painter: QPainter, dpi_x: int, dpi_y: int,
                  horizontal_offset_px: int = 0):
     """Map nominal paper physically; native clipping precedes content transforms."""
     scene.require_geometry_ready()
-    geometry = scene.geometry
+    _render_graphics_scene(scene, scene.geometry, painter, dpi_x, dpi_y,
+                           rotate_landscape, paint_rect_mm, horizontal_offset_px)
+
+
+def _render_graphics_scene(scene: QGraphicsScene, geometry: PageGeometry, painter: QPainter,
+                           dpi_x: int, dpi_y: int, rotate_landscape: bool = False,
+                           paint_rect_mm: QRectF | None = None, horizontal_offset_px: int = 0):
+    """Apply the existing physical mapping to an explicitly supplied static scene."""
     source = QRectF(0, 0,
                     distance_to_px(geometry.sheet_width_mm * unit_registry.mm),
                     distance_to_px(geometry.sheet_height_mm * unit_registry.mm))
