@@ -255,3 +255,13 @@ contours-only behavior and physical qualification remain pending. Calibration
 implementation, paired print/cut orchestration, and subsequent milestones were
 not started. No new Leonardo evidence or physical printer/cutter operation was
 requested or performed.
+
+### M10 acceptance and integration (2026-10-08)
+
+The architect accepted M10 at `57aa3f0d875a8354b217bffa5b9593a870a5d078`
+without corrective work or another acceptance test run. That commit was
+fast-forwarded into `siser-dev` and pushed before M11. M10's preceding unmerged
+statement records its historical review handoff. M11 narrowly shares the
+prepared-byte QSaveFile helper while preserving the SVG dialog contract;
+see [calibration-sheet.md](calibration-sheet.md). No SVG geometry, serializer,
+document schema or cutter qualification changed.

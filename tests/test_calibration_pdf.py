@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from io import BytesIO
+from threading import Thread
 from unittest.mock import Mock, patch
 from xml.etree import ElementTree
 
@@ -212,3 +213,23 @@ def test_primary_failure_survives_cleanup_failure(qtbot):
             patch.object(calibration.QBuffer,'close',side_effect=RuntimeError('cleanup')):
         with pytest.raises(RuntimeError,match='primary'):
             render_calibration_pdf(g,'None')
+
+
+def test_gui_thread_requirement_and_no_artwork_or_events(qtbot):
+    from PySide6.QtWidgets import QApplication
+    from mtg_proxy_printer.page_scene.items import CardItem
+    g=build_page_geometry(PageLayoutSettings(paper_size='A4'),PageType.REGULAR,1)
+    with patch.object(CardItem,'__init__',side_effect=AssertionError('No artwork item')), \
+            patch.object(QApplication,'processEvents',side_effect=AssertionError('No event processing')):
+        assert render_calibration_pdf(g,'None').startswith(b'%PDF-')
+    errors=[]
+    def background():
+        try:
+            render_calibration_pdf(g,'None')
+        except RuntimeError as error:
+            errors.append(str(error))
+    thread=Thread(target=background)
+    thread.start()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert len(errors)==1 and 'GUI thread' in errors[0]

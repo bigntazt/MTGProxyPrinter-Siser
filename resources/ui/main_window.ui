@@ -38,6 +38,7 @@
       <iconset theme="document-export"/>
      </property>
      <addaction name="action_print_pdf"/>
+     <addaction name="action_export_calibration"/>
      <addaction name="action_export_png"/>
      <addaction name="action_export_cut_template"/>
      <addaction name="separator"/>
@@ -402,6 +403,17 @@ use this to reduce the initial deck shuffling required</string>
    </property>
    <property name="toolTip">
     <string>Export document as an image sequence</string>
+   </property>
+  </action>
+  <action name="action_export_calibration">
+   <property name="icon">
+    <iconset theme="document-export"/>
+   </property>
+   <property name="text">
+    <string>Export current page calibration sheet (PDF)…</string>
+   </property>
+   <property name="toolTip">
+    <string>Export card outlines, scale references, and the selected registration marks without card artwork.</string>
    </property>
   </action>
   <action name="action_export_cut_template">
