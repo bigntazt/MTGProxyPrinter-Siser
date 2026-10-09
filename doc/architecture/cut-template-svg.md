@@ -3,8 +3,9 @@
 Recorded 2026-10-08. Corrected M08A
 `f1ab8f720f8b904e27beb8949b952258dc84dfec` was pushed on
 `milestone/m08a-leonardo-placement`, fast-forwarded into `siser-dev`, and pushed
-before creating `milestone/m09-svg-engine`. M09 remains unmerged for architect
-review. `trunk` remains `00202f988bef071c7070967e86c1490cb19114ba`.
+before creating `milestone/m09-svg-engine`. M09 was left unmerged for architect
+review at that handoff; its subsequent acceptance/integration is recorded below.
+`trunk` remains `00202f988bef071c7070967e86c1490cb19114ba`.
 
 ## Callable API
 
@@ -151,3 +152,106 @@ equality; all six original lists now correctly contain only `/MediaBox`.
 The reported `.984252` inch conversion is 25.0000008 mm. Original acquired files,
 literal entries, effective boxes, measured geometry and the unexplained X-entry
 difference were preserved. No application pytest was run for those corrections.
+
+## M10: current-page export UI (2026-10-08)
+
+The architect accepted M09 at `a248c483890f404cff592f24a28e244591ec6f66`.
+That exact commit was fast-forwarded into `siser-dev` and pushed before creating
+`milestone/m10-svg-export-ui`. M10 is pushed and left unmerged for review.
+Local/remote `trunk` remain `00202f988bef071c7070967e86c1490cb19114ba`.
+
+Use **File → Export → Export current page cut template (SVG)…**. The new
+`action_export_cut_template` uses the existing export icon and Qt slot
+auto-connection, without an extra manual connection, shortcut, or toolbar button.
+Its tooltip explains square outlines at document paper size and the exclusion of
+registration marks/printer corrections. The existing loading lock disables it;
+the slot also returns when that lock is active or another dialog is retained.
+
+Invocation synchronously obtains the selected model page, one-based page number,
+and source document path, builds the shared snapshot using `Page.page_type()` and
+`len(page)`, and serializes/encodes UTF-8 before opening the destination dialog.
+`SaveCutTemplateDialog` retains only prepared bytes and captured naming metadata,
+with no document reference for later rereading. Selection, layout, and document
+path changes after invocation cannot change that prepared export. The next
+invocation captures the new state. Expected preparation `ValueError` failures use
+the existing main-window error display before any save dialog is opened.
+
+Regular, oversized and partial pages keep the accepted serializer behavior.
+Valid empty pages produce the empty physical-sheet SVG. Explicit placeholders
+remain occupied slots even without artwork; no image-availability filter is used.
+There is no compaction prompt, document action/mutation, missing-image acquisition,
+background task, print-count update, current-page change, or save-status/history
+change. Settings, document format, serializer, geometry, PDF/PNG/native rendering,
+and dependencies are unchanged.
+
+The asynchronous file dialog uses AcceptSave/AnyFile, the translated SVG filter,
+default suffix `svg`, and the existing `export-path` initial directory. Normal
+overwrite confirmation remains enabled in production. Suggestions always include
+the extension: `Deck-page-2-cut.svg`, `Deck.v2-page-2-cut.svg`, or `page-1-cut.svg`
+for an unsaved document. Its title identifies the captured page. The existing
+`current_dialog`/`finished` lifecycle releases the reference on Save or Cancel.
+
+Saving uses QSaveFile with direct-write fallback disabled and binary WriteOnly.
+Only a complete byte count permits commit. Open, short-write and commit failures
+cancel incomplete writing and release the temporary-file owner before reporting
+an error containing destination and underlying reason. Success is logged only
+after commit. Existing output is preserved on unsuccessful saves, and cancellation
+does no file I/O or error reporting. No general export service or worker was added.
+
+### M10 focused validation
+
+Windows CPython 3.13.14, PySide6/Qt 6.11.2, pytest 9.1.1, pytest-qt 4.5.0,
+pytest-timeout 2.4.0 and Pint 0.24.4; the existing environment was reused.
+Authoritative UI edits are in `resources/ui/main_window.ui`. Actual QAction
+validation loaded the changed source successfully; no stale generated module
+blocked it, so no regeneration or packaging cycle was needed. Generated UI and
+translation catalogs were neither edited nor committed.
+
+```powershell
+$env:PATH = "$PWD\venv\Scripts;$env:PATH"
+.\venv\Scripts\python.exe -m pytest tests/ui/test_cut_template_export.py -q --timeout=30 --tb=short
+git diff --check
+```
+
+The final focused run passed **17 tests in 6.47 seconds**. It covers one controlled real main-window
+arrangement with QAction menu order, tooltip, auto-connection opening exactly one
+dialog, retained-dialog protection/cleanup, and real loading-lock disable/release.
+Light document/dialog cases cover later partial regular and oversized pages,
+placeholder occupancy, capture despite later selection/layout/path changes,
+subsequent recapture, valid empty output, exact UTF-8 bytes, Unicode destinations,
+real replacement of existing output, cancellation, and open/short/commit failure
+injections with destination preservation. Naming, dialog options, export-path
+lookup, expected preparation failures, unchanged document/history/layout/path,
+and absence of unrelated export side effects are checked. Test-only non-native
+dialogs and overwrite-confirmation bypasses do not change production options.
+
+Only this module was selected. M09 geometry/formatting matrices, PDF coordinate
+tests, M08A acquisition verification, and unrelated application/database/network/
+cache/serialization suites were skipped. No default, saved preference, OS locale,
+or dependency changes were made. Diff checks passed.
+
+Offscreen Qt controls confirmed menu text/tooltip and captured page-2 title and
+`Deck.v2-page-2-cut.svg` suggestion. Visible non-native Qt widget Save/Cancel were
+driven locally, with exact saved bytes and no Cancel write. The saved four-card
+A4 partial-page SVG was rendered with QSvgRenderer and visually inspected: the
+full-grid positions and empty remaining slots appeared correctly, without extra
+objects. Review artifacts remain ignored under `.m01-output/m10-review`. Menu
+and dialog screenshots were inspected but have the previously documented
+missing-font boxes, limiting text appearance review; control properties establish
+the strings. The controlled main-window visual arrangement used an inert preview
+scene. Native interactive controls remain unavailable/unverified; these checks
+do not establish native desktop appearance or Leonardo behavior.
+
+Fixture setup exposed a pre-existing `Document.get_empty_card_for_size()`
+constructor mismatch (an extra positional argument to `Card`). It is outside M10
+and was not repaired. Tests construct equivalent valid local placeholders with
+the existing `create_card` helper; exporting occupied placeholders works. This
+follow-up affects the application's add-empty-card path, rather than SVG saving.
+
+The template remains generic nominal document geometry, excluding registration
+marks, native printer corrections and PDF compatibility rotation. M08A Artwork
+Only findings do not qualify contours-only alignment. Production M08, Leonardo
+contours-only behavior and physical qualification remain pending. Calibration
+implementation, paired print/cut orchestration, and subsequent milestones were
+not started. No new Leonardo evidence or physical printer/cutter operation was
+requested or performed.

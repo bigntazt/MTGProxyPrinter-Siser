@@ -35,12 +35,15 @@ from mtg_proxy_printer.missing_images_manager import MissingImagesManager
 from mtg_proxy_printer.model.carddb import CardDatabase
 from mtg_proxy_printer.model.imagedb import ImageDatabase
 from mtg_proxy_printer.model.document import Document
+from mtg_proxy_printer.model.page_geometry import build_page_geometry
+from mtg_proxy_printer.cut_template_svg import serialize_cut_template_svg
 from mtg_proxy_printer.units_and_sizes import DEFAULT_SAVE_SUFFIX
 import mtg_proxy_printer.settings
 import mtg_proxy_printer.print
 from mtg_proxy_printer.ui.custom_card_import_dialog import CustomCardImportDialog
 from mtg_proxy_printer.ui.dialogs import SavePDFDialog, SaveDocumentAsDialog, LoadDocumentDialog, \
-    AboutDialog, PrintPreviewDialog, PrintDialog, DocumentSettingsDialog, SavePNGDialog, ExportCardImagesDialog
+    AboutDialog, PrintPreviewDialog, PrintDialog, DocumentSettingsDialog, SavePNGDialog, ExportCardImagesDialog, \
+    SaveCutTemplateDialog
 from mtg_proxy_printer.ui.common import show_wizard_or_dialog
 from mtg_proxy_printer.ui.cache_cleanup_wizard import CacheCleanupWizard
 from mtg_proxy_printer.ui.deck_import_wizard import DeckImportWizard
@@ -203,6 +206,7 @@ class MainWindow(QMainWindow):
             ui.action_print_pdf,
             ui.action_print_preview,
             ui.action_export_png,
+            ui.action_export_cut_template,
             ui.action_show_settings,
             ui.action_add_custom_cards,
             ui.action_download_missing_card_images,
@@ -336,6 +340,25 @@ class MainWindow(QMainWindow):
         dialog.request_run_async_task.connect(self.request_run_async_task)
         dialog.finished.connect(self.on_dialog_finished)
         self.missing_images_manager.obtain_missing_images(dialog.open)
+
+    @Slot()
+    def on_action_export_cut_template_triggered(self):
+        if UI_LOCK_SEMAPHORE or self.current_dialog is not None:
+            return
+        document = self.document
+        try:
+            page = document.currently_edited_page
+            page_number = document.get_current_page_index().row() + 1
+            source_path = document.save_file_path
+            geometry = build_page_geometry(document.page_layout, page.page_type(), len(page))
+            svg_bytes = serialize_cut_template_svg(geometry).encode("utf-8")
+        except ValueError as error:
+            self.on_error_occurred(str(error))
+            return
+        self.current_dialog = dialog = SaveCutTemplateDialog(self, svg_bytes, source_path, page_number)
+        dialog.error_occurred.connect(self.on_error_occurred)
+        dialog.finished.connect(self.on_dialog_finished)
+        dialog.open()
 
     @Slot()
     def on_action_export_card_images_triggered(self):

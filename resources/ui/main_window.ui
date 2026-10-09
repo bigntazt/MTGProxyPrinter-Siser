@@ -39,6 +39,7 @@
      </property>
      <addaction name="action_print_pdf"/>
      <addaction name="action_export_png"/>
+     <addaction name="action_export_cut_template"/>
      <addaction name="separator"/>
      <addaction name="action_export_card_images"/>
     </widget>
@@ -401,6 +402,17 @@ use this to reduce the initial deck shuffling required</string>
    </property>
    <property name="toolTip">
     <string>Export document as an image sequence</string>
+   </property>
+  </action>
+  <action name="action_export_cut_template">
+   <property name="icon">
+    <iconset theme="document-export"/>
+   </property>
+   <property name="text">
+    <string>Export current page cut template (SVG)…</string>
+   </property>
+   <property name="toolTip">
+    <string>Export square card outlines at the document’s paper size. Registration marks and printer corrections are not included.</string>
    </property>
   </action>
   <action name="action_export_card_images">

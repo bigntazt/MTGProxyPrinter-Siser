@@ -18,7 +18,7 @@ from pathlib import Path
 import shutil
 import sys
 import typing
-from PySide6.QtCore import QFile, Signal, Slot, QObject, QEvent, Qt
+from PySide6.QtCore import QFile, QSaveFile, QIODevice, Signal, Slot, QObject, QEvent, Qt
 from PySide6.QtWidgets import QFileDialog, QWidget, QTextBrowser, QDialogButtonBox, QDialog
 from PySide6.QtGui import QIcon
 from PySide6.QtPrintSupport import QPrintPreviewDialog, QPrintDialog, QPrinter
@@ -64,6 +64,7 @@ del get_logger
 __all__ = [
     "SavePDFDialog",
     "SavePNGDialog",
+    "SaveCutTemplateDialog",
     "SaveDocumentAsDialog",
     "LoadDocumentDialog",
     "AboutDialog",
@@ -131,6 +132,59 @@ class SavePDFDialog(QFileDialog):
     @Slot()
     def on_reject(self):
         logger.debug("User aborted saving to PDF. Doing nothing.")
+
+
+class SaveCutTemplateDialog(QFileDialog):
+    """Save immutable current-page SVG bytes captured before opening the dialog."""
+
+    error_occurred = Signal(str)
+
+    def __init__(self, parent: QWidget, svg_bytes: bytes, source_path: Path | None, page_number: int):
+        super().__init__(parent)
+        self.svg_bytes = bytes(svg_bytes)
+        self.source_path = source_path
+        self.page_number = page_number
+        self.setWindowTitle(self.tr("Export cut template for page {page}", "File dialog window title").format(
+            page=page_number))
+        self.setNameFilter(self.tr("SVG cut templates (*.svg)", "File type filter"))
+        self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        self.setFileMode(QFileDialog.FileMode.AnyFile)
+        self.setDefaultSuffix("svg")
+        if default_path := read_path("export", "export-path"):
+            self.setDirectory(default_path)
+        stem = f"{source_path.stem}-" if source_path is not None else ""
+        self.selectFile(f"{stem}page-{page_number}-cut.svg")
+        self.accepted.connect(self.on_accept)
+
+    @Slot()
+    def on_accept(self):
+        path = self.selectedFiles()[0]
+        output = QSaveFile(path)
+        output.setDirectWriteFallback(False)
+        committed = False
+        failure_message = None
+        try:
+            if not output.open(QIODevice.OpenModeFlag.WriteOnly):
+                raise OSError(output.errorString())
+            written = output.write(self.svg_bytes)
+            if written != len(self.svg_bytes):
+                raise OSError(self.tr("Incomplete write ({written}/{expected} bytes): {reason}").format(
+                    written=written, expected=len(self.svg_bytes), reason=output.errorString()))
+            if not output.commit():
+                raise OSError(output.errorString())
+            committed = True
+        except OSError as error:
+            failure_message = self.tr("Could not save cut template to {path}: {reason}").format(path=path, reason=error)
+        finally:
+            if not committed:
+                output.cancelWriting()
+            # Release the temporary-file owner before a modal error display.
+            del output
+        if committed:
+            logger.info(f"Saved cut template to {path}")
+        elif failure_message is not None:
+            logger.error(failure_message)
+            self.error_occurred.emit(failure_message)
 
 
 class SavePNGDialog(QFileDialog):
