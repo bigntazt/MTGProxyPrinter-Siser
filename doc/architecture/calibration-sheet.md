@@ -33,7 +33,9 @@ a temporary document, placeholder cards, or card artwork. Partial-page positions
 oversized dimensions, occupied-slot order and coincident contours are preserved.
 The existing geometry model and SVG serializer remain unchanged.
 
-One unfilled square rectangle per placement uses a black noncosmetic 0.1 mm pen.
+M11 originally used one unfilled square rectangle per placement with a black
+noncosmetic 0.1 mm pen. M12 now rounds regular trim outlines as recorded below;
+oversized trim outlines remain square, and the pen is unchanged.
 Its centreline agrees with the M09 SVG. Each centre cross has two perpendicular
 5 mm segments (2.5 mm each side of the centre). Five labels, inset 2 mm from
 top-left with 3 mm pitch, show slot index plus one and actual X/Y/W/H in mm to
@@ -399,3 +401,70 @@ Existing Leonardo Letter PDF/LDS evidence remains intact. Production M08 and
 later implementation were not started. Only this documentation file changed.
 Checks covered new proof geometry, independent visual review, hashes, whitespace
 and scope. Application tests were not rerun after documentation-only edits.
+
+## M12 — Calibration outlines consume the shared rounded contour
+
+M12 starts from accepted integration
+`e77722c995c24cba7d97c56811b225c81d390c64` on
+`milestone/m12-rounded-corners`, left unmerged for architect review. Trunk is
+unchanged at `00202f988bef071c7070967e86c1490cb19114ba`.
+
+The selected regular-card contour radius is 2.5 mm, a project specification
+rather than a claim of independently measured manufactured-card dimensions.
+Oversized cards remain square. `mtg_proxy_printer.trim_contour` is the small
+shared definition used by both SVG and calibration PDF: immutable outer mm
+bounds plus radius min(nominal, width/2, height/2). Current supported regular
+trims are larger than 5 mm on each axis, so clamping is only exercised by
+synthetic small rectangles, not ordinary layouts. PageGeometry retains the
+original outer trim rectangle and all positions/dimensions.
+
+Only outline construction changes: the fresh scene draws the helper's
+QPainterPath instead of a square QGraphicsRectItem. Qt represents regular
+quarter circles by four cubic curves; SVG has four explicit circular arcs.
+Their nominal radius, tangent locations and outer bounds agree; cubic arcs
+are approximate between tangents, so exact mathematical arc identity is not
+claimed. Oversized paths have straight sides and square corners. Labels,
+centre crosses, rulers, registration profiles, 0.1 mm noncosmetic pen, physical
+mapping and preparation/save lifecycle retain their existing behavior.
+No bleed/layout adjustment, artwork sharp-corner coupling, settings field,
+document change, equipment-specific offset or compensation was introduced.
+
+The M11/M11A descriptions and retained square proof files above are historical
+baseline evidence. M12 outputs are isolated in `.m01-output/m12-review/`, and
+M08B's accepted original PDF/LDS, A/B package, measurements/hashes and scripts
+remain unchanged. Rounded cuts have not been physically qualified by the prior
+square-contour comparison.
+
+With Python 3.13.14, PySide6/Qt 6.11.2, pypdf 6.19.0 and pytest 9.1.1, using a
+copied child environment with `QT_QPA_PLATFORM=windows` and venv Scripts on PATH:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest tests/test_cut_template_svg.py tests/test_calibration_pdf.py tests/ui/test_cut_template_export.py::test_real_action_autoconnection_menu_and_loading_lock -q
+git diff --check
+```
+
+**66 passed in 14.40 seconds.** The generated-file parser records cubic controls,
+not only bounds. Every regular outline must have four correctly directed quarter
+curves with endpoints matched to actual SVG arc tangents within 0.01 mm and
+quarter-circle controls within 0.001 mm. SVG checks independently require 2.5 mm
+radii, correct tangents and unchanged bounds. Oversized output contains no curves.
+Existing ruler endpoints/lengths, labels, registration and failure cleanup pass.
+The one directly affected tooltip assertion verifies the updated wording with
+unchanged menu identity/order. No generated UI code was edited or regeneration
+needed for dynamic development loading. Unrelated suites and M08B/acquisition
+checks were skipped; passing application tests were not repeated after docs edits.
+
+Independent Poppler 26.07.0 renders were visually inspected: nine rounded Letter
+outlines at 180 DPI, a close corner crop of the 600-DPI PDF, and two square
+oversized outlines on custom 12 × 8 inch paper. Labels and both rulers remain
+readable, with no contour clipping in these examples. Actual Letter PDF outer
+bounds at both 300 and 600 DPI are x=13.335, y=7.620, width=63.0766666667,
+height=88.0533333333 mm, with four cubic quarters per card and 612 × 792 pt pages.
+Horizontal/vertical rulers measure 49.999999991333326/49.99999999133332 mm at
+both resolutions. Review SVGs retain exact nominal circular radius and their
+bytes are identical across PDF resolutions. Full measurements/hashes and exact
+visual commands are recorded in [cut-template-svg.md](cut-template-svg.md#m12--shared-rounded-trim-contours).
+
+Software verification is complete. Native interactive export, Leonardo rounded
+import and physical rounded-corner cutting remain separate pending trials.
+No production Siser-profile integration or later milestone was started.

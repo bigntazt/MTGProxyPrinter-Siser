@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from io import BytesIO
+import math
 from threading import Thread
 from unittest.mock import Mock, patch
 from xml.etree import ElementTree
@@ -9,7 +10,7 @@ from xml.etree import ElementTree
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter
-from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsSimpleTextItem
+from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsPathItem, QGraphicsSimpleTextItem
 from pypdf import PdfReader
 
 from mtg_proxy_printer import calibration
@@ -23,8 +24,8 @@ from mtg_proxy_printer.units_and_sizes import PageType, unit_registry, distance_
 mm = unit_registry.mm
 
 
-def stroked_paths(page):
-    """Only straight synthetic Qt paths; discard clip/fill/text operations."""
+def stroked_commands(page):
+    """Synthetic Qt lines/cubic quarters only; discard clip/fill/text operations."""
     result, current = [], []
     closed = False
     height = float(page.mediabox.height)
@@ -34,12 +35,16 @@ def stroked_paths(page):
             a,b,c,d,e,f = cm
             return ((a*x+c*y+e)*25.4/72, (height-b*x-d*y-f)*25.4/72)
         if operator == b'm':
-            current.append(point(*map(float, args)))
+            current.append(('M',[point(*map(float,args))]))
         elif operator == b'l':
-            current.append(point(*map(float, args)))
+            current.append(('L',[point(*map(float,args))]))
+        elif operator == b'c':
+            values = list(map(float,args))
+            current.append(('C',[point(*values[i:i+2]) for i in (0,2,4)]))
         elif operator == b're':
             x,y,w,h = map(float,args)
-            current.extend(point(x1,y1) for x1,y1 in [(x,y),(x+w,y),(x+w,y+h),(x,y+h)])
+            for command,(x1,y1) in zip(('M','L','L','L'),[(x,y),(x+w,y),(x+w,y+h),(x,y+h)]):
+                current.append((command,[point(x1,y1)]))
             closed = True
         elif operator == b'h':
             closed = True
@@ -52,17 +57,19 @@ def stroked_paths(page):
     return result
 
 
+def stroked_paths(page):
+    return [([p for command,values in commands for p in values],closed)
+            for commands,closed in stroked_commands(page)]
+
+
 def bounds(points):
     xs,ys=zip(*points)
     return min(xs),min(ys),max(xs)-min(xs),max(ys)-min(ys)
 
 
 def svg_bounds(geometry):
-    result=[]
-    for path in ElementTree.fromstring(serialize_cut_template_svg(geometry)):
-        t=path.attrib['d'].split()
-        result.append(bounds([(float(t[i]),float(t[i+1])) for i in (1,4,7,10)]))
-    return result
+    from tests.test_cut_template_svg import path_bounds
+    return [path_bounds(path) for path in ElementTree.fromstring(serialize_cut_template_svg(geometry))]
 
 
 @pytest.mark.parametrize('dpi',[300,600])
@@ -85,6 +92,39 @@ def test_measured_pdf_outlines_and_references(qtbot,dpi,layout,page_type,count,b
     assert len(outlines)==count
     for observed,wanted in zip(outlines,svg_bounds(geometry)):
         assert observed==pytest.approx(wanted,abs=.01,rel=0)
+    from tests.test_cut_template_svg import path_commands
+    svg = ElementTree.fromstring(serialize_cut_template_svg(geometry))
+    contours = [commands for commands,closed in stroked_commands(page) if closed]
+    for commands,path in zip(contours,svg):
+        curves = []
+        previous = None
+        for command,points in commands:
+            if command == 'C':
+                curves.append((previous,*points))
+            previous = points[-1]
+        if page_type == PageType.OVERSIZED:
+            assert not curves and not any(c == 'A' for c,v in path_commands(path))
+            continue
+        assert len(curves) == 4
+        svg_arcs = []
+        previous = None
+        for command,values in path_commands(path):
+            if command == 'A':
+                assert values[:5] == (2.5,2.5,0,0,1)
+                svg_arcs.append((previous,values[-2:]))
+            if values:
+                previous = values[-2:]
+        k = 4/3*math.tan(math.pi/8)
+        for index,(start,end) in enumerate(svg_arcs):
+            matches = [curve for curve in curves if math.dist(curve[0],start)<.01 and math.dist(curve[-1],end)<.01]
+            assert len(matches) == 1  # A square or mirrored/reversed corner fails.
+            dx,dy = end[0]-start[0],end[1]-start[1]
+            assert abs(dx) == pytest.approx(2.5,abs=1e-6,rel=0)
+            assert abs(dy) == pytest.approx(2.5,abs=1e-6,rel=0)
+            control1 = (start[0]+k*dx,start[1]) if index%2 == 0 else (start[0],start[1]+k*dy)
+            control2 = (end[0],end[1]-k*dy) if index%2 == 0 else (end[0]-k*dx,end[1])
+            assert matches[0][1] == pytest.approx(control1,abs=.001,rel=0)
+            assert matches[0][2] == pytest.approx(control2,abs=.001,rel=0)
     lines=[points for points,closed in paths if not closed and len(points)==2]
     rulers=[points for points in lines if max(bounds(points)[2:])>49]
     first=geometry.placements[0].trim_mm
@@ -105,11 +145,11 @@ def test_static_scene_contract(qtbot):
     scene,roots=_build_calibration_scene(g,'None')
     try:
         assert not roots
-        rectangles=[i for i in scene.items() if isinstance(i,QGraphicsRectItem)]
+        rectangles=[i for i in scene.items() if isinstance(i,QGraphicsPathItem)]
         assert len(rectangles)==1
         r=g.placements[0].trim_px
-        rect=rectangles[0].rect()
-        assert (rect.x(),rect.y(),rect.width(),rect.height())==(r.x,r.y,r.width,r.height)
+        rect=rectangles[0].path().boundingRect()
+        assert (rect.x(),rect.y(),rect.width(),rect.height())==pytest.approx((r.x,r.y,r.width,r.height),abs=1e-9,rel=0)
         assert rectangles[0].brush().style()==Qt.BrushStyle.NoBrush
         assert not rectangles[0].pen().isCosmetic()
         assert rectangles[0].pen().widthF()==pytest.approx(distance_to_px(.1*mm))

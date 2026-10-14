@@ -424,7 +424,7 @@ use this to reduce the initial deck shuffling required</string>
     <string>Export current page cut template (SVG)…</string>
    </property>
    <property name="toolTip">
-    <string>Export square card outlines at the document’s paper size. Registration marks and printer corrections are not included.</string>
+    <string>Export rounded regular card outlines and square oversized card outlines at the document’s paper size. Registration marks and printer corrections are not included.</string>
    </property>
   </action>
   <action name="action_export_card_images">

@@ -3,13 +3,14 @@
 import math
 import sys
 
-from PySide6.QtCore import QBuffer, QIODevice, QMarginsF, QRectF, QSizeF, QThread, Qt
+from PySide6.QtCore import QBuffer, QIODevice, QMarginsF, QSizeF, QThread, Qt
 from PySide6.QtGui import QBrush, QFont, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen
 from PySide6.QtWidgets import QApplication, QGraphicsScene
 
 from mtg_proxy_printer.model.page_geometry import PageGeometry
 from mtg_proxy_printer.page_scene.registration_profiles import get_registration_profile
 from mtg_proxy_printer.print import _render_graphics_scene
+from mtg_proxy_printer.trim_contour import trim_contour
 from mtg_proxy_printer.units_and_sizes import RESOLUTION, distance_to_px, unit_registry
 
 
@@ -32,7 +33,8 @@ def _build_calibration_scene(geometry: PageGeometry, registration_style: str):
 
     for placement in geometry.placements:
         trim, physical = placement.trim_px, placement.trim_mm
-        scene.addRect(QRectF(trim.x, trim.y, trim.width, trim.height), pen, QBrush(Qt.BrushStyle.NoBrush))
+        contour = trim_contour(physical,geometry.page_type)
+        scene.addPath(contour.painter_path(px), pen, QBrush(Qt.BrushStyle.NoBrush))
         cx, cy = trim.x + trim.width / 2, trim.y + trim.height / 2
         scene.addLine(cx-px(2.5), cy, cx+px(2.5), cy, pen)
         scene.addLine(cx, cy-px(2.5), cx, cy+px(2.5), pen)

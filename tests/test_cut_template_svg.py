@@ -43,15 +43,22 @@ def parse(geometry):
 
 
 def vertices(path):
-    tokens = path.attrib["d"].split()
-    assert len(tokens) == 13
-    assert tokens[::3] == ["M", "L", "L", "L", "Z"]
-    return [(float(tokens[i]), float(tokens[i+1])) for i in (1, 4, 7, 10)]
+    return [values[-2:] for command,values in path_commands(path) if values]
+
+
+def path_commands(path):
+    tokens = iter(path.attrib['d'].split())
+    result = []
+    for command in tokens:
+        count = {'M':2,'L':2,'A':7,'Z':0}[command]
+        result.append((command,tuple(float(next(tokens)) for _ in range(count))))
+    return result
 
 
 def path_bounds(path):
     points = vertices(path)
-    return (points[0][0], points[0][1], points[1][0]-points[0][0], points[2][1]-points[0][1])
+    xs,ys = zip(*points)
+    return min(xs),min(ys),max(xs)-min(xs),max(ys)-min(ys)
 
 
 @pytest.mark.parametrize("layout,page_type,count,sheet", [
@@ -74,8 +81,22 @@ def test_representative_layouts(layout, page_type, count, sheet):
     assert len(root) == count
     for path, placement in zip(root, geometry.placements):
         trim = placement.trim_mm
-        expected = [(trim.x, trim.y), (trim.right, trim.y),
-                    (trim.right, trim.bottom), (trim.x, trim.bottom)]
+        assert path_bounds(path) == pytest.approx((trim.x,trim.y,trim.width,trim.height),abs=1e-6,rel=0)
+        radius = 2.5 if page_type == PageType.REGULAR else 0
+        if radius:
+            expected = [(trim.x+radius,trim.y),(trim.right-radius,trim.y),
+                        (trim.right,trim.y+radius),(trim.right,trim.bottom-radius),
+                        (trim.right-radius,trim.bottom),(trim.x+radius,trim.bottom),
+                        (trim.x,trim.bottom-radius),(trim.x,trim.y+radius),(trim.x+radius,trim.y)]
+            assert [c for c,v in path_commands(path)] == ['M','L','A','L','A','L','A','L','A','Z']
+            arcs = [v for c,v in path_commands(path) if c == 'A']
+            assert len(arcs) == 4
+            assert all(v[:5] == (2.5,2.5,0,0,1) for v in arcs)
+        else:
+            expected = [(trim.x, trim.y), (trim.right, trim.y),
+                        (trim.right, trim.bottom), (trim.x, trim.bottom)]
+            assert [c for c,v in path_commands(path)] == ['M','L','L','L','Z']
+        assert len(vertices(path)) == len(expected)
         for actual, point in zip(vertices(path), expected):
             assert actual == pytest.approx(point, abs=1e-6, rel=0)
     full = build_page_geometry(layout, page_type, geometry.capacity)
@@ -103,8 +124,8 @@ def test_coincident_edges_keep_individual_paths(spacing):
     paths = parse(geometry)
     assert len(paths) == 4
     a, b, below = vertices(paths[0]), vertices(paths[1]), vertices(paths[3])
-    assert a[1] == b[0] and a[2] == b[3]
-    assert a[3] == below[0] and a[2] == below[1]
+    assert a[2] == b[7] and a[3] == b[6]
+    assert a[5] == below[0] and a[4] == below[1]
 
 
 def test_bleed_corners_and_determinism():
@@ -129,7 +150,8 @@ def test_nominal_overhang_and_placement_order_are_preserved():
     # Ordering is supplied by the snapshot; no sorting or empty-slot filling.
     geometry = replace(geometry, placements=geometry.placements[::-1])
     root = parse(geometry)
-    assert vertices(root[2])[1][0] > geometry.sheet_width_mm
+    x,y,w,h = path_bounds(root[2])
+    assert x+w > geometry.sheet_width_mm
 
 
 @pytest.mark.parametrize("field", ["sheet_width_mm", "sheet_height_mm"])
@@ -157,13 +179,26 @@ def test_invalid_trim_and_derived_coordinates(trim):
 
 
 def test_decimal_formatting_and_unrounded_endpoint_calculation():
-    geometry = build_page_geometry(PageLayoutSettings(paper_size="A4"), PageType.REGULAR, 1)
+    geometry = build_page_geometry(PageLayoutSettings(paper_size="A4"), PageType.OVERSIZED, 1)
     trim = Rectangle(-.0000001, 1.2345674, 1.2345674, 1.2345674)
     with patch.object(CardPlacement, "trim_mm", new_callable=PropertyMock, return_value=trim):
         text = serialize_cut_template_svg(geometry)
     root = ElementTree.fromstring(text)
     assert root[0].attrib["d"] == "M 0 1.234567 L 1.234567 1.234567 L 1.234567 2.469135 L 0 2.469135 Z"
     assert "-0" not in root[0].attrib["d"] and "e-" not in root[0].attrib["d"]
+
+
+@pytest.mark.parametrize('width,height,radius',[(3,8,1.5),(8,2,1),(5,5,2.5)])
+def test_small_trim_radius_clamps_without_changing_bounds(width,height,radius):
+    from mtg_proxy_printer.trim_contour import trim_contour
+    trim = Rectangle(10,20,width,height)
+    contour = trim_contour(trim,PageType.REGULAR)
+    assert contour.bounds == trim and contour.radius_mm == radius
+    geometry = build_page_geometry(PageLayoutSettings(paper_size='A4'),PageType.REGULAR,1)
+    with patch.object(CardPlacement,'trim_mm',new_callable=PropertyMock,return_value=trim):
+        path = parse(geometry)[0]
+    assert path_bounds(path) == pytest.approx((10,20,width,height),abs=1e-6,rel=0)
+    assert [v[:2] for c,v in path_commands(path) if c == 'A'] == [(radius,radius)]*4
 
 
 def test_serializer_without_application_or_settings_access():

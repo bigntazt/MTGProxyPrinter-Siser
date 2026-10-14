@@ -6,6 +6,8 @@ import math
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 
+from mtg_proxy_printer.trim_contour import trim_contour
+
 if TYPE_CHECKING:
     from mtg_proxy_printer.model.page_geometry import PageGeometry
 
@@ -23,7 +25,7 @@ def _format_mm(value: float, *, dimension: bool = False) -> str:
 
 
 def serialize_cut_template_svg(geometry: PageGeometry) -> str:
-    """Return one square, closed path per occupied trim, in top-left millimetres.
+    """Return one closed trim path, regular rounded/oversized square, in mm.
 
     The caller owns snapshot construction and UTF-8 file writing. Coordinates
     remain nominal, including coincident edges and any paper-edge overhang.
@@ -41,10 +43,12 @@ def serialize_cut_template_svg(geometry: PageGeometry) -> str:
         trim = placement.trim_mm
         _format_mm(trim.width, dimension=True)
         _format_mm(trim.height, dimension=True)
-        x, y, right, bottom = map(_format_mm, (trim.x, trim.y, trim.right, trim.bottom))
+        contour = trim_contour(trim,geometry.page_type)
+        commands = ' '.join(command + (' ' + ' '.join(map(_format_mm,values)) if values else '')
+                            for command,values in contour.commands())
         ElementTree.SubElement(root, "path", {
             "id": f"card-{placement.slot_index}",
-            "d": f"M {x} {y} L {right} {y} L {right} {bottom} L {x} {bottom} Z",
+            "d": commands,
             "fill": "none",
             "stroke": "black",
             "stroke-width": "0.1",

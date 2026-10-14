@@ -264,7 +264,7 @@ def test_real_action_autoconnection_menu_and_loading_lock(qtbot, host):
     menu_actions = window.ui.menu_export.actions()
     assert action.objectName() == "action_export_cut_template"
     assert action.text() == "Export current page cut template (SVG)…"
-    assert action.toolTip() == ("Export square card outlines at the document’s paper size. "
+    assert action.toolTip() == ("Export rounded regular card outlines and square oversized card outlines at the document’s paper size. "
                                 "Registration marks and printer corrections are not included.")
     assert menu_actions.index(action) == menu_actions.index(window.ui.action_export_png) + 1
     assert menu_actions[menu_actions.index(action)+1].isSeparator()
