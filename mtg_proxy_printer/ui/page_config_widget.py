@@ -109,7 +109,8 @@ class PageConfigWidget(QGroupBox):
             'Registration marks are added without adjusting your layout.\n'
             'Keep marks visible and unobstructed for reliable registration.\n'
             'Printer corrections and compatibility rotations affect the whole printed page.\n'
-            'Export does not certify cutter compatibility or alignment.'))
+            'Export does not certify cutter compatibility or alignment.\n'
+            'Read Application > Siser Print & Cut Guide for the tested workflows.'))
         ui.print_registration_marks_style.currentIndexChanged.connect(self._on_print_registration_marks_style_changed)
         ui.print_registration_marks_style.currentIndexChanged.connect(lambda: self.page_layout_changed.emit(page_layout))
 

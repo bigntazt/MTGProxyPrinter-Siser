@@ -66,6 +66,7 @@
     <addaction name="action_cleanup_local_image_cache"/>
     <addaction name="separator"/>
     <addaction name="action_show_changelog"/>
+    <addaction name="action_show_siser_guide"/>
     <addaction name="action_show_about_dialog"/>
     <addaction name="separator"/>
     <addaction name="action_quit"/>
@@ -272,6 +273,14 @@
   <action name="action_show_changelog">
    <property name="text">
     <string>Show Changelog</string>
+   </property>
+  </action>
+  <action name="action_show_siser_guide">
+   <property name="icon">
+    <iconset theme="help-contents"/>
+   </property>
+   <property name="text">
+    <string>Siser Print &amp; Cut Guide</string>
    </property>
   </action>
   <action name="action_compact_document">
