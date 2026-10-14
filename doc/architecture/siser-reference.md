@@ -615,3 +615,16 @@ documented bundled interpreter, measurement `--check`, fixture verification,
 and `git diff --check` passed. Comparing the regenerated record with its committed
 predecessor after removing explicit-box lists showed exact equality. No
 application tests or new acquisition were required.
+
+### M08B controlled external-mark proof (2026-10-13)
+
+Preserved the newly supplied nine-card Letter baseline PDF/LDS byte-identically
+under `references/external-marks/nine-card-baseline/`, separately indexed in the
+manifest. Pre-recalibration cut observations and the subsequent visually aligned
+recalibrated run are recorded without deriving corrections or accuracy claims.
+An independent static-scene proof uses PageGeometry card positions and the
+fixture's measured bars/0.176389 mm stroke through unchanged physical mapping.
+Direct PDF comparison and independent renders pass; physical A/B comparison
+remains pending. See [M08B proof and handoff](siser-external-mark-proof.md).
+This measured Letter-only experiment is not the production Siser profile and
+does not approve camera anchors, clear zones, other layouts or Romeo.

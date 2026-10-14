@@ -1346,5 +1346,17 @@
     },
     "prior_architect_review": "pypdf plus independent pdfplumber measurement and Poppler render inspection, as supplied in closeout; local reproduction recorded separately",
     "production_m08_gate": "external marks/independent-page alignment, camera anchors/clear zones, active profile, physical print/cut qualification, Romeo and contours-only behavior remain pending"
+  },
+  "m08b_external_mark_proof": {
+    "status": "software_proof_verified_physical_comparison_pending",
+    "starting_integration_sha": "243ac2f09aea058483f260f973ea8e1ed39d97aa",
+    "recorded_date": "2026-10-13",
+    "reference_record": {
+      "path": "references/external-marks/nine-card-baseline/reference.json",
+      "sha256": "8a334c8586d8b7b46632d2e13970bf5e8428ff97d94ea25823c1112a09519fcf"
+    },
+    "scope": "Development-only measured Letter nine-card zero-spacing zero-bleed fixture; no production profile or optical clear-zone qualification",
+    "proof_renderer": "render_external_mark_proof.py",
+    "comparison_checker": "measure_external_mark_proof.py"
   }
 }

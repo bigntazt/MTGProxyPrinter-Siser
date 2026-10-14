@@ -1,0 +1,41 @@
+M08B controlled A/B comparison — after architect software review
+
+Package: D:\Code\MTGProxyPrinter-Siser\.m01-output\m08b-review\
+A-leonardo-control.pdf: unchanged reviewed Leonardo baseline.
+B-generated-marks.pdf: newly drawn nine-card proof with measured fixture bars.
+Nine Card Baseline Cut.lds: unchanged opaque native project used for BOTH cuts.
+comparison-measurements.json: direct file measurements, without fitted alignment.
+
+1. Print one fresh A sheet and one fresh B sheet from the SAME PDF viewer,
+   actual-size/100%, identical Letter paper, feed orientation and driver settings.
+   Disable fitting, shrinking, scaling and borderless enlargement.
+2. Cut both using the SAME unchanged LDS and the newly calibrated Siser.
+   Check and record active cutting parameters before starting: loading an LDS
+   does not establish restoration of a cutting preset.
+3. Keep cutter calibration and placement unchanged between A and B. Do not
+   apply an offset or manually nudge either cut geometry or registration marks.
+4. Observe normal registration acquisition and cut-to-line alignment at top,
+   middle and bottom. Record failures before attempting any workaround.
+5. Do NOT reimport B into Leonardo and print it there: print B directly from
+   the same viewer as A to avoid another processing step.
+6. Compare whether B adds a consistent error relative to A. If A no longer
+   reproduces the satisfactory calibrated baseline, the comparison is
+   inconclusive until A is restored; do not compensate B.
+
+Record viewer/version: ______; printer/driver: ______; paper/feed: ______;
+scaling/borderless settings: ______; cutter: ______; calibration/date (if known):
+______; active tool, blade, pressure, speed, passes and other settings: ______.
+
+Sheet | Registration acquisition | Top alignment | Middle alignment | Bottom alignment
+A     |                         |               |                  |
+B     |                         |               |                  |
+
+Report raw observations, measurement method/tool precision and uncertainty.
+Previous caliper alignment was visual; repeatability was not established.
+Pre-recalibration displacements are historical observations, not correction
+constants or current failures. No numerical machine-accuracy claim is made.
+
+The agent prepared the package only and submitted no physical job. A successful
+comparison supports this fixture/workflow only, not all layouts, optical clear
+zones, other printers, Romeo, or a production Siser profile. The close proximity
+of corner cards and marks remains a layout constraint for later clearance work.
