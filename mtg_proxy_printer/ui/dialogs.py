@@ -120,7 +120,11 @@ class SavePDFDialog(QFileDialog):
     def on_accept(self):
         logger.debug("User chose a file name, about to generate the PDF document")
         path = self.selectedFiles()[0]
-        mtg_proxy_printer.print.export_pdf(self.document, path, self)
+        try:
+            mtg_proxy_printer.print.export_pdf(self.document, path, self)
+        except RuntimeError as error:
+            self.parent().on_error_occurred(str(error))
+            return
         self.request_run_async_task.emit(PrintCountUpdater(self.document))
         logger.info(f"Saved document to {path}")
 
@@ -325,6 +329,7 @@ class AboutDialog(QDialog):
 
 
 class PrintPreviewDialog(QPrintPreviewDialog):
+    error_occurred = Signal(str)
 
     def __init__(self, document: "Document", parent: QWidget | None = None):
         self.renderer = mtg_proxy_printer.print.Renderer(document)
@@ -333,8 +338,15 @@ class PrintPreviewDialog(QPrintPreviewDialog):
         self.renderer.setParent(self)
         # The only way found to reliably set the window size is by forcing it larger via the minimum size.
         self.setMinimumSize(1000, 800)
-        self.paintRequested.connect(self.renderer.print_document)
+        self.paintRequested.connect(self._render_preview)
         logger.info(f"Created {self.__class__.__name__} instance.")
+
+    @Slot(QPrinter)
+    def _render_preview(self, printer: QPrinter):
+        try:
+            self.renderer.print_document(printer)
+        except RuntimeError as error:
+            self.error_occurred.emit(str(error))
 
     def showEvent(self, a0):
         # Resetting the minimum size to allow shrinking it again requires some delay.
@@ -345,6 +357,8 @@ class PrintPreviewDialog(QPrintPreviewDialog):
 
 class PrintDialog(QPrintDialog):
 
+    error_occurred = Signal(str)
+
     request_run_async_task = Signal(PrintCountUpdater)
 
     def __init__(self, document: "Document", parent: QWidget | None = None):
@@ -353,9 +367,19 @@ class PrintDialog(QPrintDialog):
         super().__init__(self.q_printer, parent)
         self.renderer.setParent(self)
         # When the user accepts the dialog, print the document and increase the usage counts
-        self.accepted[QPrinter].connect(self.renderer.print_document)
-        self.accepted.connect(lambda: self.request_run_async_task.emit(PrintCountUpdater(document)))
+        self.accepted[QPrinter].connect(self._print_accepted)
         logger.info(f"Created {self.__class__.__name__} instance.")
+
+
+    @Slot(QPrinter)
+    def _print_accepted(self, printer: QPrinter):
+        try:
+            completed = self.renderer.print_document(printer)
+        except RuntimeError as error:
+            self.error_occurred.emit(str(error))
+            return
+        if completed:
+            self.request_run_async_task.emit(PrintCountUpdater(self.renderer.document))
 
 
 class ChangedSettingsHoverEventFilter(QObject):
