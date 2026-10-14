@@ -18,7 +18,7 @@ from pathlib import Path
 import shutil
 import sys
 import typing
-from PySide6.QtCore import QFile, Signal, Slot, QObject, QEvent, Qt
+from PySide6.QtCore import QFile, QSaveFile, QIODevice, Signal, Slot, QObject, QEvent, Qt
 from PySide6.QtWidgets import QFileDialog, QWidget, QTextBrowser, QDialogButtonBox, QDialog
 from PySide6.QtGui import QIcon
 from PySide6.QtPrintSupport import QPrintPreviewDialog, QPrintDialog, QPrinter
@@ -64,6 +64,8 @@ del get_logger
 __all__ = [
     "SavePDFDialog",
     "SavePNGDialog",
+    "SaveCutTemplateDialog",
+    "SaveCalibrationPDFDialog",
     "SaveDocumentAsDialog",
     "LoadDocumentDialog",
     "AboutDialog",
@@ -131,6 +133,96 @@ class SavePDFDialog(QFileDialog):
     @Slot()
     def on_reject(self):
         logger.debug("User aborted saving to PDF. Doing nothing.")
+
+
+def _write_prepared_file(path: str, data: bytes) -> None:
+    """Replace only after a complete write; release temporary output on failure."""
+    output = QSaveFile(path)
+    output.setDirectWriteFallback(False)
+    committed = False
+    try:
+        if not output.open(QIODevice.OpenModeFlag.WriteOnly):
+            raise OSError(output.errorString())
+        written = output.write(data)
+        if written != len(data):
+            raise OSError(f"Incomplete write ({written}/{len(data)} bytes): {output.errorString()}")
+        if not output.commit():
+            raise OSError(output.errorString())
+        committed = True
+    finally:
+        if not committed:
+            output.cancelWriting()
+        del output
+
+
+class SaveCutTemplateDialog(QFileDialog):
+    """Save immutable current-page SVG bytes captured before opening the dialog."""
+
+    error_occurred = Signal(str)
+
+    def __init__(self, parent: QWidget, svg_bytes: bytes, source_path: Path | None, page_number: int):
+        super().__init__(parent)
+        self.svg_bytes = bytes(svg_bytes)
+        self.source_path = source_path
+        self.page_number = page_number
+        self.setWindowTitle(self.tr("Export cut template for page {page}", "File dialog window title").format(
+            page=page_number))
+        self.setNameFilter(self.tr("SVG cut templates (*.svg)", "File type filter"))
+        self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        self.setFileMode(QFileDialog.FileMode.AnyFile)
+        self.setDefaultSuffix("svg")
+        if default_path := read_path("export", "export-path"):
+            self.setDirectory(default_path)
+        stem = f"{source_path.stem}-" if source_path is not None else ""
+        self.selectFile(f"{stem}page-{page_number}-cut.svg")
+        self.accepted.connect(self.on_accept)
+
+    @Slot()
+    def on_accept(self):
+        path = self.selectedFiles()[0]
+        try:
+            _write_prepared_file(path, self.svg_bytes)
+        except OSError as error:
+            message = self.tr("Could not save cut template to {path}: {reason}").format(path=path, reason=error)
+            logger.error(message)
+            self.error_occurred.emit(message)
+            return
+        logger.info(f"Saved cut template to {path}")
+
+
+class SaveCalibrationPDFDialog(QFileDialog):
+    """Save a single prepared calibration PDF without rereading document state."""
+
+    error_occurred = Signal(str)
+
+    def __init__(self, parent: QWidget, pdf_bytes: bytes, source_path: Path | None, page_number: int):
+        super().__init__(parent)
+        self.pdf_bytes = bytes(pdf_bytes)
+        self.source_path = source_path
+        self.page_number = page_number
+        self.setWindowTitle(self.tr("Export calibration sheet for page {page}", "File dialog window title").format(
+            page=page_number))
+        self.setNameFilter(self.tr("PDF documents (*.pdf)", "File type filter"))
+        self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        self.setFileMode(QFileDialog.FileMode.AnyFile)
+        self.setDefaultSuffix("pdf")
+        if default_path := read_path("export", "export-path"):
+            self.setDirectory(default_path)
+        stem = f"{source_path.stem}-" if source_path is not None else ""
+        self.selectFile(f"{stem}page-{page_number}-calibration.pdf")
+        self.accepted.connect(self.on_accept)
+
+    @Slot()
+    def on_accept(self):
+        path = self.selectedFiles()[0]
+        try:
+            _write_prepared_file(path, self.pdf_bytes)
+        except OSError as error:
+            message = self.tr("Could not save calibration sheet to {path}: {reason}").format(path=path, reason=error)
+            logger.error(message)
+            self.error_occurred.emit(message)
+            return
+        logger.info(f"Saved calibration sheet to {path}")
 
 
 class SavePNGDialog(QFileDialog):
