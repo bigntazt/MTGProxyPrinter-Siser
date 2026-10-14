@@ -377,7 +377,7 @@ def test_main_window_reports_construction_failure(preview):
     from PySide6.QtWidgets import QMessageBox
     fake = SimpleNamespace(document=Mock(),current_dialog='retained',tr=lambda text,*args:text,
                            _ask_user_about_compacting_document=lambda action:QMessageBox.StandardButton.No,
-                           on_error_occurred=Mock())
+                           _artwork_output_allowed=lambda: True, on_error_occurred=Mock())
     name = 'PrintPreviewDialog' if preview else 'PrintDialog'
     method = module.MainWindow.on_action_print_preview_triggered if preview else module.MainWindow.on_action_print_triggered
     with patch.object(module,name,side_effect=RuntimeError('construction failure')):

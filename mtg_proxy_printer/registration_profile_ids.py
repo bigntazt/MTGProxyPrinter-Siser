@@ -8,3 +8,4 @@ class RegistrationProfileId(enum.Enum):
     NONE = "None"
     BULLSEYE = "Bullseye"
     SILHOUETTE = "Cut marker"
+    SISER = "Siser"

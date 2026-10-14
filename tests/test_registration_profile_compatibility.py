@@ -11,13 +11,13 @@ from mtg_proxy_printer.units_and_sizes import ConfigParser
 
 
 def test_identity_values_and_plain_string_validation():
-    assert [item.value for item in RegistrationProfileId] == ["None", "Bullseye", "Cut marker"]
-    assert app_settings.VALID_PRINT_REGISTRATION_MARKS_STYLES == {"None", "Bullseye", "Cut marker"}
+    assert [item.value for item in RegistrationProfileId] == ["None", "Bullseye", "Cut marker", "Siser"]
+    assert app_settings.VALID_PRINT_REGISTRATION_MARKS_STYLES == {"None", "Bullseye", "Cut marker", "Siser"}
     assert isinstance(app_settings.VALID_PRINT_REGISTRATION_MARKS_STYLES, set)
     assert all(type(value) is str for value in app_settings.VALID_PRINT_REGISTRATION_MARKS_STYLES)
 
 
-@pytest.mark.parametrize("style", ["None", "Bullseye", "Cut marker"])
+@pytest.mark.parametrize("style", ["None", "Bullseye", "Cut marker", "Siser"])
 def test_real_settings_save_load_and_ui_strings(qtbot, empty_save_database, style):
     layout = PageLayoutSettings(paper_size="A4", print_registration_marks_style=style)
     ActionSaveDocument.save_settings(empty_save_database, layout)
@@ -31,9 +31,9 @@ def test_real_settings_save_load_and_ui_strings(qtbot, empty_save_database, styl
     qtbot.addWidget(widget)
     widget.load_from_page_layout(loaded)
     combo = widget.ui.print_registration_marks_style
-    assert [combo.itemData(index) for index in range(combo.count())] == ["None", "Bullseye", "Cut marker"]
+    assert [combo.itemData(index) for index in range(combo.count())] == ["None", "Bullseye", "Cut marker", "Siser"]
     assert combo.currentData() == style
-    combo.setCurrentIndex((combo.currentIndex()+1) % 3)
+    combo.setCurrentIndex((combo.currentIndex()+1) % 4)
     assert type(widget.page_layout.print_registration_marks_style) is str
     assert widget.page_layout.print_registration_marks_style == combo.currentData()
 
@@ -52,3 +52,11 @@ def test_unknown_global_default_restored(qtbot):
     app_settings._validate_documents_section(configuration)
     assert configuration["documents"]["print-registration-marks-style"] == \
         app_settings.DEFAULT_SETTINGS["documents"]["print-registration-marks-style"]
+
+
+def test_siser_global_default_validated(qtbot):
+    configuration = ConfigParser()
+    configuration.read_dict(app_settings.DEFAULT_SETTINGS)
+    configuration['documents']['print-registration-marks-style'] = RegistrationProfileId.SISER.value
+    app_settings._validate_documents_section(configuration)
+    assert PageLayoutSettings.create_from_settings(configuration).print_registration_marks_style == 'Siser'

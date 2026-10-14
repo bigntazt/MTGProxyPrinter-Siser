@@ -39,6 +39,7 @@ from mtg_proxy_printer.async_tasks.base import AsyncTask
 from mtg_proxy_printer.units_and_sizes import RESOLUTION, distance_to_px, unit_registry, PageType, distance_to_rounded_px
 import mtg_proxy_printer.meta_data
 from mtg_proxy_printer.settings import settings
+from mtg_proxy_printer.siser_registration import require_artwork_output_supported
 from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.page_geometry import build_page_geometry, PageGeometry
 from mtg_proxy_printer.page_scene.page_scene import RenderMode, PageScene
@@ -60,11 +61,21 @@ __all__ = [
 PNGEncoderThreadLimit = max(1, process_cpu_count()-1)
 
 
+def _require_document_output_supported(document: Document) -> PageGeometry:
+    """Empty snapshot for pre-device sheet validation; never a card layout export."""
+    try:
+        geometry = build_page_geometry(document.page_layout, PageType.UNDETERMINED, 0)
+    except ValueError as error:
+        raise RuntimeError(f'Output paper unavailable: {error}') from error
+    require_artwork_output_supported(document.page_layout.print_registration_marks_style, geometry)
+    return geometry
+
+
 def _render_page(scene: PageScene, painter: QPainter, dpi_x: int, dpi_y: int,
                  rotate_landscape: bool = False, paint_rect_mm: QRectF | None = None,
                  horizontal_offset_px: int = 0):
     """Map nominal paper physically; native clipping precedes content transforms."""
-    scene.require_geometry_ready()
+    scene.require_output_ready()
     _render_graphics_scene(scene, scene.geometry, painter, dpi_x, dpi_y,
                            rotate_landscape, paint_rect_mm, horizontal_offset_px)
 
@@ -112,6 +123,12 @@ class PNGRenderer(AsyncTask):
 
     def run(self):
         document = self.document
+        try:
+            _require_document_output_supported(document)
+        except RuntimeError as error:
+            self.error_occurred.emit(str(error))
+            self.task_completed.emit()
+            return
         file_path = self.file_path
         page_count = self.page_count
         if not page_count:  # No pages in document
@@ -126,12 +143,14 @@ class PNGRenderer(AsyncTask):
         self.task_begins.emit(page_count, self.tr("Export as PNGs:", "Progress bar label text"))
         locked = False
         try:
+            _require_document_output_supported(document)
             self.ui_lock_acquire.emit()
             locked = True
             scene = PageScene(document, RenderMode.ON_PAPER | RenderMode.FILE_EXPORT, self)
             for page_nr in range(page_count):
                 scene.on_current_page_changed(QPersistentModelIndex(document.index(page_nr, 0)))
-                scene.require_geometry_ready()
+                scene.require_output_ready()
+                require_artwork_output_supported(document.page_layout.print_registration_marks_style, scene.geometry)
                 geometry = scene.geometry
                 page_size = QSize(round(geometry.sheet_width_mm * self._output_dpi / 25.4),
                                   round(geometry.sheet_height_mm * self._output_dpi / 25.4))
@@ -172,6 +191,7 @@ class PNGRenderer(AsyncTask):
 
 
 def export_pdf(document: Document, file_path: str, parent: "SavePDFDialog"):
+    _require_document_output_supported(document)
     # TODO: Deprecate this and merge logic into the PDFPrinter class
     main_window = parent.parent()
     total_pages = document.rowCount()
@@ -250,6 +270,8 @@ class PDFPrinter(QPdfWriter):
         :param document_index: Document sequence number. Used to compute the range of pages to be exported
         :param pages_to_print: Number of pages to export. Default value None means "all pages"
         """
+        geometry = _require_document_output_supported(document)
+        self._nominal_sheet_mm = (geometry.sheet_width_mm, geometry.sheet_height_mm)
         self.advance_progress = advance_signal
         self.document = document
         self.document_index = document_index
@@ -269,7 +291,6 @@ class PDFPrinter(QPdfWriter):
         self.painter = QPainter()
         # magnitude returns a float by default, so round to int to avoid a TypeError
         self.setResolution(round(mtg_proxy_printer.units_and_sizes.RESOLUTION.magnitude))
-        geometry = build_page_geometry(document.page_layout, PageType.UNDETERMINED, 0)
         page_layout = QPageLayout(self._to_page_size(geometry), QPageLayout.Orientation.Portrait,
                                   QMarginsF(0, 0, 0, 0), QPageLayout.Unit.Millimeter)
         if not self.setPageLayout(page_layout):
@@ -293,12 +314,15 @@ class PDFPrinter(QPdfWriter):
 
     def run(self):
         logger.info("Begin rendering PDF document.")
+        _require_document_output_supported(self.document)
         try:
+            first_index = self.document_index * self.pages_to_print
+            last_index = min((self.document_index + 1) * self.pages_to_print, self.document.rowCount())
+            if first_index < last_index:
+                self._switch_to_page(first_index)
             if not self.painter.begin(self):
                 raise RuntimeError("Cannot start PDF painter")
             self.painter.setRenderHint(RenderHint.LosslessImageRendering)
-            first_index = self.document_index * self.pages_to_print
-            last_index = min((self.document_index + 1) * self.pages_to_print, self.document.rowCount())
             for page_number in range(first_index, last_index):
                 try:
                     self._switch_to_page(page_number)
@@ -319,6 +343,14 @@ class PDFPrinter(QPdfWriter):
         """Render the given page on the internal scene"""
         index = QPersistentModelIndex(self.document.index(page_number, 0))
         self.scene.on_current_page_changed(index)
+        self.scene.require_output_ready()
+        geometry = self.scene.geometry
+        require_artwork_output_supported(self.document.page_layout.print_registration_marks_style, geometry)
+        dimensions = (geometry.sheet_width_mm, geometry.sheet_height_mm)
+        if not all(math.isclose(a, b, abs_tol=1e-6, rel_tol=0)
+                   for a, b in zip(dimensions, self._nominal_sheet_mm)):
+            raise RuntimeError(f'Nominal paper changed from {self._nominal_sheet_mm} to {dimensions} mm. '
+                               'Restart the PDF export with the current paper configuration.')
 
 
 # Maximum paper representation discrepancy, not a fitting tolerance.
@@ -352,6 +384,7 @@ def _native_paint_rect(printer: QPrinter, geometry: PageGeometry, rotate_landsca
 
 class Renderer(QObject):
     def __init__(self, document: Document, parent: QObject | None = None):
+        _require_document_output_supported(document)
         super().__init__(parent)
         self.document = document
         self.render_mode = RenderMode.ON_PAPER | RenderMode.NATIVE_PRINT
@@ -359,6 +392,7 @@ class Renderer(QObject):
 
     @Slot(QPrinter)
     def print_document(self, printer: QPrinter):
+        _require_document_output_supported(self.document)
         page_count = self.document.rowCount()
         if not page_count:
             logger.info("No document pages; no print job started")
@@ -369,7 +403,8 @@ class Renderer(QObject):
         page_number = 0
         try:
             self.scene.on_current_page_changed(QPersistentModelIndex(self.document.index(0, 0)))
-            self.scene.require_geometry_ready()
+            self.scene.require_output_ready()
+            require_artwork_output_supported(self.document.page_layout.print_registration_marks_style, self.scene.geometry)
             _native_paint_rect(printer, self.scene.geometry, rotate)
             accepted_resolution = printer.resolution()
             if not math.isfinite(accepted_resolution) or accepted_resolution <= 0:
@@ -381,7 +416,8 @@ class Renderer(QObject):
             painter.setRenderHint(RenderHint.LosslessImageRendering)
             for page_number in range(page_count):
                 self.scene.on_current_page_changed(QPersistentModelIndex(self.document.index(page_number, 0)))
-                self.scene.require_geometry_ready()
+                self.scene.require_output_ready()
+                require_artwork_output_supported(self.document.page_layout.print_registration_marks_style, self.scene.geometry)
                 paint_rect = _native_paint_rect(printer, self.scene.geometry, rotate)
                 dpi_x, dpi_y = printer.logicalDpiX(), printer.logicalDpiY()
                 if not all(math.isfinite(v) and v > 0 for v in (dpi_x, dpi_y)):
