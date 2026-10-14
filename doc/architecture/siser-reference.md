@@ -663,3 +663,125 @@ Original evidence, package files, manifest, scripts and production code remain
 unchanged. Only documentation whitespace/scope/consistency checks apply; unrelated
 tests and prior acquisition checks were skipped. Production work awaits a separate
 architect implementation prompt.
+
+## M16 — Tested artwork workflows and offline guide (2026-10-14)
+
+M16 starts from accepted/integrated M15
+`b842da3dd6e0bc0e2a8da72b04bfe86bec0bfcc4`. It adds user documentation,
+offline help and a new evidence record, without changing print mapping,
+registration, layout, calibration or cut geometry.
+
+### Newly supplied saved project and provenance
+
+Wayne supplied `A4 - 4x2 - Template - Baseline.lds` in the incoming MTG Exports
+folder. Its original filename and all 6,200 bytes are preserved under
+`tests/data/print_cut/siser/references/artwork-workflow/a4-portrait-feed/`.
+SHA-256: `fae809c54eb51050ca1cdd048e1a76d100c67b806ff8720e36ba06e9e3e3a6e1`.
+The appended `m16_artwork_workflow` manifest section indexes it separately;
+all prior sections and historical reference files remain unchanged.
+
+The ZIP contains `CDOC` and `PREVIEW`. CDOC was not decoded or rewritten.
+The 6,280-byte PNG PREVIEW is extracted byte-for-byte to
+`resources/help/images/a4-portrait-feed.png`, SHA-256
+`a5fad39e8c96d4717c267283dfb02eccbbac350c74c89323892bfaa80a0b7ed2`.
+It shows eight rounded contours in two columns/four rows, corner marks and a
+small lower-left triangle. That triangle is a visible orientation cue in this
+saved preview; it is not claimed to exist in our PDFs or to have verified camera
+semantics. The preview does not establish exact native dimensions, cut settings,
+rotation direction or import history. Those operational details are reported
+by the operator. No full card-artwork PDF was added to the public repository.
+
+### Operator-reported successful physical outcomes
+
+**Letter:** Wayne reported that all nine cards in the ordinary artwork/rounded-SVG
+trial cut successfully, with visually identical alignment on every card.
+Configured row spacing, column spacing and bleed were each 1 mm. Intentional
+artwork/registration-mark overlap did not prevent that successful result.
+
+**A4:** Wayne reported that the supplied A4 landscape artwork print cut successfully
+after reorienting its SVG on an A4 portrait Leonardo sheet. All cards appeared
+symmetrical and alignment was visually perfect. The clarified sequence is:
+
+1. Create an A4 portrait sheet in Leonardo.
+2. Drag and drop our exported A4 landscape SVG.
+3. Choose Artwork Only.
+4. Retain the default import position.
+5. Rotate the complete guide group counterclockwise by a quarter-turn into the
+   portrait arrangement, with no separate translation or resizing.
+6. Set the imported SVG guides to cut lines.
+7. Proceed with the cut.
+
+This changes a complete four-column/two-row landscape arrangement to two columns
+and four rows of sideways cards for portrait feed. It does not require a duplicated
+print/cut group or numeric relocation. The MTGProxyPrinter document remains nominal
+A4 landscape, with the PDF landscape workaround disabled for this unrotated route;
+Leonardo's portrait sheet and the physical cutter feed are distinct from that
+supported document orientation. No new reference frame or automatic SVG rotation
+was introduced.
+
+**Historical interpretation correction:** earlier A4 work established software/
+reference geometry, not an already validated physical A4 two-pass workflow. The
+Letter baseline was the earlier established physical test. Historical diagnostic
+instructions and observations are preserved; they are not the steps of this new
+successful A4 route.
+
+These are operator-reported visual outcomes, not numerical physical accuracy
+specifications. No unreported equipment settings, registration-acquisition log,
+new dimensional measurements or tolerances are inferred. Default A4 import
+placement is established for this tested complete 4×2 grid, not every occupancy
+or asymmetric arrangement. Saved LDS cutting settings may follow last-used
+values rather than restore the complete operational preset. Recalibration resolved
+the earlier large baseline displacement without application compensation.
+Borderless operation and automatic rotation remain deferred; Romeo equivalence
+and universal optical/rounded-cut/equipment qualification are not established.
+The missing-card-list incident recovered after restart; no database fix is claimed.
+
+### Canonical guide, help UI and focused validation
+
+The single user guide is [resources/help/siser-print-cut.md](../../resources/help/siser-print-cut.md).
+README links to it near the top, retaining upstream attribution. Both Markdown and
+its preview are registered in `resources/resources.qrc` with development paths
+under resources. **Application → Siser Print & Cut Guide** opens a resizable,
+read-only QTextBrowser dialog with a Close button. Auto-connection is used exactly
+once. Its retained `siser_guide_dialog` reference is separate from `current_dialog`;
+repeated invocation raises/reuses the same window, including after closing.
+The selector tooltip points to that menu entry without changing stored identities.
+
+Resource loading uses existing `ui.common` conventions, filesystem base URLs in
+development and `qrc:/help/` in compiled mode, independent of current directory.
+Missing Markdown or image reports a useful error; failed construction is not
+retained. No help operation changes document/settings/page/export state or schedules
+image acquisition, downloads or background work. The directly affected ignored
+`main_window.pyi` was regenerated using the existing UI generator; no generated
+code was hand-edited and no general help framework was added.
+
+Exact final application selection:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest tests/ui/test_siser_guide.py -q --timeout=30 --tb=short
+```
+
+**5 passed in 6.02 seconds**: real designer menu/auto-connected slot and Close/reopen,
+read-only state retention, development resources away from the checkout, minimal
+binary Qt-resource compilation of only help assets, and two missing-resource cases.
+The menu fixture substitutes only unrelated central-editor/database/download/
+progress collaborators; it retains the real MainWindow initialization, menu and
+slot. No database/network suite is run. CPython 3.13.14, PySide6/Qt 6.11.2 and
+pytest 9.1.1; existing pyside6-rcc/uic tools only, no install or upgrade. The
+font-capable process uses child-only `QT_QPA_PLATFORM=windows` and venv PATH;
+no persistent Qt, locale or preferences change.
+
+Programmatic Windows captures under ignored `.m01-output/m16-review/` were
+inspected at the guide top, saved preview and troubleshooting end. Text/image and
+Close are readable, scrolling works, and default-size horizontal overflow is zero.
+Close/reopen was also exercised with Qt mouse events. These are programmatic checks,
+not actual native interactive control use; native interactive controls were
+unavailable. No new physical print/cut was submitted.
+
+LDS source/copy/staged bytes and PREVIEW provenance, Markdown/README relative links,
+resource registrations, append-only manifest consistency, `git diff --check` and
+scope were reviewed. Passing application tests were not repeated after these
+architecture-only edits. Printing/geometry matrices, historical acquisition and
+M08B checks, PDF/PNG/native suites, database/network/cache suites and hardware jobs
+were skipped. Trunk, historical evidence and existing review outputs remain intact.
+M16 stays unmerged for architect review; no subsequent implementation began.

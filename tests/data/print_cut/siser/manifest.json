@@ -1358,5 +1358,40 @@
     "scope": "Development-only measured Letter nine-card zero-spacing zero-bleed fixture; no production profile or optical clear-zone qualification",
     "proof_renderer": "render_external_mark_proof.py",
     "comparison_checker": "measure_external_mark_proof.py"
+  },
+  "m16_artwork_workflow": {
+    "recorded_date": "2026-10-14",
+    "classification": "operator-reported visual physical outcomes; not numerical accuracy guarantees",
+    "operator": "Wayne",
+    "native_project": {
+      "path": "references/artwork-workflow/a4-portrait-feed/A4 - 4x2 - Template - Baseline.lds",
+      "received_filename": "A4 - 4x2 - Template - Baseline.lds",
+      "size_bytes": 6200,
+      "sha256": "fae809c54eb51050ca1cdd048e1a76d100c67b806ff8720e36ba06e9e3e3a6e1",
+      "container_entries": [
+        "CDOC",
+        "PREVIEW"
+      ],
+      "cdoc_decoded": false
+    },
+    "preview": {
+      "repository_path": "resources/help/images/a4-portrait-feed.png",
+      "source_entry": "PREVIEW",
+      "size_bytes": 6280,
+      "sha256": "a5fad39e8c96d4717c267283dfb02eccbbac350c74c89323892bfaa80a0b7ed2",
+      "scope": "Contour-only saved preview; does not prove exact native dimensions, cut settings, rotation direction or import history"
+    },
+    "letter_result": "All nine ordinary-artwork/rounded-SVG cards cut successfully with visually identical alignment; row spacing, column spacing and bleed each 1 mm; intentional artwork/mark overlap.",
+    "a4_result": "A4 landscape artwork cut successfully after SVG reorientation on an A4 portrait Leonardo sheet; all cards appeared symmetrical and alignment visually perfect.",
+    "a4_operator_sequence": [
+      "Create A4 portrait sheet",
+      "Drag and drop exported A4 landscape SVG",
+      "Choose Artwork Only",
+      "Retain default import position",
+      "Rotate complete guide group counterclockwise 90 degrees with no separate translation or resizing",
+      "Set imported SVG guides to cut lines",
+      "Proceed with cut"
+    ],
+    "scope_limits": "Tested complete A4 4-column/2-row to portrait-feed 2-column/4-row sideways-card layout; no other occupancy, optical-clear-zone or Romeo qualification; no hardware correction."
   }
 }

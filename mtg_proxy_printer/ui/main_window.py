@@ -52,6 +52,7 @@ from mtg_proxy_printer.ui.common import show_wizard_or_dialog
 from mtg_proxy_printer.ui.cache_cleanup_wizard import CacheCleanupWizard
 from mtg_proxy_printer.ui.deck_import_wizard import DeckImportWizard
 from mtg_proxy_printer.ui.progress_bar import ProgressBarManager
+from mtg_proxy_printer.ui.siser_guide_dialog import SiserGuideDialog
 
 try:
     from mtg_proxy_printer.ui.generated.main_window import Ui_MainWindow
@@ -106,7 +107,20 @@ class MainWindow(QMainWindow):
         self.ui.action_show_toolbar.setChecked(mtg_proxy_printer.settings.settings["gui"].getboolean("show-toolbar"))
         self._setup_platform_dependent_default_shortcuts()
         self.current_dialog: QDialog | None = None
+        self.siser_guide_dialog: SiserGuideDialog | None = None
         logger.info(f"Created {self.__class__.__name__} instance.")
+
+    @Slot()
+    def on_action_show_siser_guide_triggered(self):
+        if self.siser_guide_dialog is None:
+            try:
+                self.siser_guide_dialog = SiserGuideDialog(self)
+            except RuntimeError as error:
+                self.on_error_occurred(str(error))
+                return
+        self.siser_guide_dialog.show()
+        self.siser_guide_dialog.raise_()
+        self.siser_guide_dialog.activateWindow()
 
     def update_language_model(self):
         available_languages = CardDatabase.main_instance.get_all_languages()

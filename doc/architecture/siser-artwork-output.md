@@ -152,3 +152,14 @@ remains scoped to its tested job. Optical recognition, equipment equivalence,
 rounded physical cuts, Romeo and transformed Leonardo workflows remain unqualified.
 No hardware-derived correction or automatic adjustment was introduced. M15 remains
 unmerged for architect review; subsequent milestones were not started.
+
+## M16 subsequent operator workflow evidence
+
+The M15 software checks and qualification limits above are its historical handoff.
+M16 records later operator-reported successful Letter nine-card and complete A4
+landscape-to-portrait-feed trials, with the exact counterclockwise A4 sequence and
+saved contour-only LDS preview. See [M16 evidence and scope](siser-reference.md#m16--tested-artwork-workflows-and-offline-guide-2026-10-14)
+and the canonical [Siser Print & Cut Guide](../../resources/help/siser-print-cut.md).
+No printing, registration, calibration or layout behavior changes accompany that
+record. The trials are visual operator evidence, not numerical accuracy or universal
+optical/equipment qualification; borderless and automatic rotation remain deferred.
