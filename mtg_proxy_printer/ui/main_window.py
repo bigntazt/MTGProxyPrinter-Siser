@@ -38,6 +38,7 @@ from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.page_geometry import build_page_geometry
 from mtg_proxy_printer.cut_template_svg import serialize_cut_template_svg
 from mtg_proxy_printer.calibration import render_calibration_pdf
+from mtg_proxy_printer.siser_registration import require_artwork_output_supported
 from mtg_proxy_printer.units_and_sizes import DEFAULT_SAVE_SUFFIX
 import mtg_proxy_printer.settings
 import mtg_proxy_printer.print
@@ -281,6 +282,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_action_print_triggered(self):
+        if not self._artwork_output_allowed():
+            return
         logger.info(f"User prints the current document.")
         action_str = self.tr(
             "printing",
@@ -301,6 +304,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_action_print_preview_triggered(self):
+        if not self._artwork_output_allowed():
+            return
         logger.info(f"User views the print preview.")
         action_str = self.tr(
             "printing",
@@ -319,6 +324,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_action_print_pdf_triggered(self):
+        if not self._artwork_output_allowed():
+            return
         logger.info(f"User prints the current document to PDF.")
         action_str = self.tr(
             "exporting as a PDF",
@@ -332,6 +339,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_action_export_png_triggered(self):
+        if not self._artwork_output_allowed():
+            return
         logger.info(f"User exports the current document to a sequence of PNG images.")
         action_str = self.tr(
             "exporting as a PNG image sequence",
@@ -342,6 +351,14 @@ class MainWindow(QMainWindow):
         dialog.request_run_async_task.connect(self.request_run_async_task)
         dialog.finished.connect(self.on_dialog_finished)
         self.missing_images_manager.obtain_missing_images(dialog.open)
+
+    def _artwork_output_allowed(self) -> bool:
+        try:
+            require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
+        except RuntimeError as error:
+            self.on_error_occurred(str(error))
+            return False
+        return True
 
     @Slot()
     def on_action_export_calibration_triggered(self):

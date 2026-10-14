@@ -28,6 +28,7 @@ from mtg_proxy_printer.model.page_layout import PageLayoutSettings
 from mtg_proxy_printer.model.page_geometry import PageGeometry, build_page_geometry
 from mtg_proxy_printer.page_scene.items import RenderLayers, NeighborsPresent, CardItem
 from mtg_proxy_printer.page_scene.registration_profiles import RegistrationProfile, get_registration_profile
+from mtg_proxy_printer.registration_profile_ids import RegistrationProfileId
 from mtg_proxy_printer.settings import settings
 from mtg_proxy_printer.units_and_sizes import PageType, unit_registry, distance_to_rounded_px, \
     Quantity
@@ -91,6 +92,7 @@ class PageScene(QGraphicsScene):
         self.full_grid_geometry: dict[PageType, PageGeometry] = {}
         self.geometry_pending = False
         self.geometry_unavailable_reason: str | None = None
+        self.registration_unavailable_reason: str | None = None
         self._rebuild_full_grid_geometry()
         background_color = self.get_background_color(render_mode)
         logger.debug(f"Drawing background rectangle")
@@ -214,6 +216,8 @@ class PageScene(QGraphicsScene):
     def get_background_color(self, render_mode: RenderMode) -> QColor:
         if RenderMode.ON_PAPER in render_mode:
             return QColorConstants.Transparent
+        if self.document.page_layout.print_registration_marks_style == RegistrationProfileId.SISER.value:
+            return QColorConstants.White
         return self.palette().color(ColorGroup.Active, ColorRole.Base)
 
     def get_cut_marker_pen(self, render_mode: RenderMode) -> QPen:
@@ -323,17 +327,28 @@ class PageScene(QGraphicsScene):
         self.page_number_text.setText(f"{page}/{total_pages}")
 
     def _update_print_markers(self):
+        background_color = self.get_background_color(self.render_mode)
+        self.background.setPen(background_color)
+        self.background.setBrush(background_color)
         if self.geometry is None:
             self._clear_registration_items()
             return
         profile = get_registration_profile(self.document.page_layout.print_registration_marks_style)
-        if profile is not self._registration_profile:
+        try:
+            if profile is not self._registration_profile:
+                self._clear_registration_items()
+                self._registration_profile = profile
+                self.print_markers = profile.create_items()
+                for item in self.print_markers:
+                    self.addItem(item)
+            profile.place_items(self.print_markers, self.geometry, legacy_x_offset_px=self.x_offset)
+        except (ValueError, RuntimeError) as error:
+            if profile.profile_id != RegistrationProfileId.SISER:
+                raise
             self._clear_registration_items()
-            self._registration_profile = profile
-            self.print_markers = profile.create_items()
-            for item in self.print_markers:
-                self.addItem(item)
-        profile.place_items(self.print_markers, self.geometry, legacy_x_offset_px=self.x_offset)
+            self.registration_unavailable_reason = str(error)
+            return
+        self.registration_unavailable_reason = None
         self._restore_registration_stacking()
 
     def _clear_registration_items(self):
@@ -341,6 +356,7 @@ class PageScene(QGraphicsScene):
             self.removeItem(item)
         self.print_markers.clear()
         self._registration_profile = None
+        self.registration_unavailable_reason = None
 
     def _restore_registration_stacking(self):
         guides = self.cut_lines

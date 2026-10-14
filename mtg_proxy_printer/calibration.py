@@ -11,10 +11,14 @@ from mtg_proxy_printer.model.page_geometry import PageGeometry
 from mtg_proxy_printer.page_scene.registration_profiles import get_registration_profile
 from mtg_proxy_printer.print import _render_graphics_scene
 from mtg_proxy_printer.trim_contour import trim_contour
+from mtg_proxy_printer.registration_profile_ids import RegistrationProfileId
+from mtg_proxy_printer.siser_registration import resolve_siser_page_marks
 from mtg_proxy_printer.units_and_sizes import RESOLUTION, distance_to_px, unit_registry
 
 
 def _build_calibration_scene(geometry: PageGeometry, registration_style: str):
+    if registration_style == RegistrationProfileId.SISER.value:
+        resolve_siser_page_marks(geometry)
     scene = QGraphicsScene()
     scene.setSceneRect(0, 0, geometry.scene_width_px, geometry.scene_height_px)
     px = lambda value: distance_to_px(value * unit_registry.mm)

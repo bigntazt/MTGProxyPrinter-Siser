@@ -101,6 +101,15 @@ class PageConfigWidget(QGroupBox):
         ui.print_registration_marks_style.addItem(
             self.tr("Silhouette cutter (Cameo-compatible)",
                     "A print/cut registration marker style"), RegistrationProfileId.SILHOUETTE.value)
+        ui.print_registration_marks_style.addItem(
+            self.tr("Siser Page Marks (experimental)", "A print/cut registration marker style"),
+            RegistrationProfileId.SISER.value)
+        ui.print_registration_marks_style.setToolTip(self.tr(
+            'Experimental Leonardo 1.1.31 Page Marks for Letter portrait and A4 landscape.\n'
+            'Currently available for calibration PDF export.\n'
+            'Registration marks are added without adjusting your layout.\n'
+            'Keep marks visible and unobstructed for reliable registration.\n'
+            'Export does not certify cutter compatibility or alignment.'))
         ui.print_registration_marks_style.currentIndexChanged.connect(self._on_print_registration_marks_style_changed)
         ui.print_registration_marks_style.currentIndexChanged.connect(lambda: self.page_layout_changed.emit(page_layout))
 

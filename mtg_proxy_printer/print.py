@@ -39,6 +39,7 @@ from mtg_proxy_printer.async_tasks.base import AsyncTask
 from mtg_proxy_printer.units_and_sizes import RESOLUTION, distance_to_px, unit_registry, PageType, distance_to_rounded_px
 import mtg_proxy_printer.meta_data
 from mtg_proxy_printer.settings import settings
+from mtg_proxy_printer.siser_registration import require_artwork_output_supported
 from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.page_geometry import build_page_geometry, PageGeometry
 from mtg_proxy_printer.page_scene.page_scene import RenderMode, PageScene
@@ -112,6 +113,12 @@ class PNGRenderer(AsyncTask):
 
     def run(self):
         document = self.document
+        try:
+            require_artwork_output_supported(document.page_layout.print_registration_marks_style)
+        except RuntimeError as error:
+            self.error_occurred.emit(str(error))
+            self.task_completed.emit()
+            return
         file_path = self.file_path
         page_count = self.page_count
         if not page_count:  # No pages in document
@@ -126,10 +133,12 @@ class PNGRenderer(AsyncTask):
         self.task_begins.emit(page_count, self.tr("Export as PNGs:", "Progress bar label text"))
         locked = False
         try:
+            require_artwork_output_supported(document.page_layout.print_registration_marks_style)
             self.ui_lock_acquire.emit()
             locked = True
             scene = PageScene(document, RenderMode.ON_PAPER | RenderMode.FILE_EXPORT, self)
             for page_nr in range(page_count):
+                require_artwork_output_supported(document.page_layout.print_registration_marks_style)
                 scene.on_current_page_changed(QPersistentModelIndex(document.index(page_nr, 0)))
                 scene.require_geometry_ready()
                 geometry = scene.geometry
@@ -172,6 +181,7 @@ class PNGRenderer(AsyncTask):
 
 
 def export_pdf(document: Document, file_path: str, parent: "SavePDFDialog"):
+    require_artwork_output_supported(document.page_layout.print_registration_marks_style)
     # TODO: Deprecate this and merge logic into the PDFPrinter class
     main_window = parent.parent()
     total_pages = document.rowCount()
@@ -250,6 +260,7 @@ class PDFPrinter(QPdfWriter):
         :param document_index: Document sequence number. Used to compute the range of pages to be exported
         :param pages_to_print: Number of pages to export. Default value None means "all pages"
         """
+        require_artwork_output_supported(document.page_layout.print_registration_marks_style)
         self.advance_progress = advance_signal
         self.document = document
         self.document_index = document_index
@@ -293,6 +304,7 @@ class PDFPrinter(QPdfWriter):
 
     def run(self):
         logger.info("Begin rendering PDF document.")
+        require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
         try:
             if not self.painter.begin(self):
                 raise RuntimeError("Cannot start PDF painter")
@@ -301,6 +313,7 @@ class PDFPrinter(QPdfWriter):
             last_index = min((self.document_index + 1) * self.pages_to_print, self.document.rowCount())
             for page_number in range(first_index, last_index):
                 try:
+                    require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
                     self._switch_to_page(page_number)
                     _render_export_page(self.scene, self.painter, self.resolution(),
                                         self.landscape_workaround_enabled)
@@ -352,6 +365,7 @@ def _native_paint_rect(printer: QPrinter, geometry: PageGeometry, rotate_landsca
 
 class Renderer(QObject):
     def __init__(self, document: Document, parent: QObject | None = None):
+        require_artwork_output_supported(document.page_layout.print_registration_marks_style)
         super().__init__(parent)
         self.document = document
         self.render_mode = RenderMode.ON_PAPER | RenderMode.NATIVE_PRINT
@@ -359,6 +373,7 @@ class Renderer(QObject):
 
     @Slot(QPrinter)
     def print_document(self, printer: QPrinter):
+        require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
         page_count = self.document.rowCount()
         if not page_count:
             logger.info("No document pages; no print job started")
@@ -380,6 +395,7 @@ class Renderer(QObject):
                 raise RuntimeError("Cannot start printer painter; check the selected printer")
             painter.setRenderHint(RenderHint.LosslessImageRendering)
             for page_number in range(page_count):
+                require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
                 self.scene.on_current_page_changed(QPersistentModelIndex(self.document.index(page_number, 0)))
                 self.scene.require_geometry_ready()
                 paint_rect = _native_paint_rect(printer, self.scene.geometry, rotate)
