@@ -36,6 +36,8 @@ from mtg_proxy_printer.model.carddb import CardDatabase
 from mtg_proxy_printer.model.imagedb import ImageDatabase
 from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.page_geometry import build_page_geometry
+from mtg_proxy_printer.units_and_sizes import PageType
+from mtg_proxy_printer.registration_profile_ids import RegistrationProfileId
 from mtg_proxy_printer.cut_template_svg import serialize_cut_template_svg
 from mtg_proxy_printer.calibration import render_calibration_pdf
 from mtg_proxy_printer.siser_registration import require_artwork_output_supported
@@ -288,7 +290,8 @@ class MainWindow(QMainWindow):
         action_str = self.tr(
             "printing",
             "This is passed as the {action} when asking the user about compacting the document if that can save pages")
-        if self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel:
+        if (self.document.page_layout.print_registration_marks_style != RegistrationProfileId.SISER.value
+                and self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel):
             return
         try:
             dialog = PrintDialog(self.document, self)
@@ -310,7 +313,8 @@ class MainWindow(QMainWindow):
         action_str = self.tr(
             "printing",
             "This is passed as the {action} when asking the user about compacting the document if that can save pages")
-        if self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel:
+        if (self.document.page_layout.print_registration_marks_style != RegistrationProfileId.SISER.value
+                and self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel):
             return
         try:
             dialog = PrintPreviewDialog(self.document, self)
@@ -330,7 +334,8 @@ class MainWindow(QMainWindow):
         action_str = self.tr(
             "exporting as a PDF",
             "This is passed as the {action} when asking the user about compacting the document if that can save pages")
-        if self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel:
+        if (self.document.page_layout.print_registration_marks_style != RegistrationProfileId.SISER.value
+                and self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel):
             return
         self.current_dialog = dialog = SavePDFDialog(self, self.document)
         dialog.request_run_async_task.connect(self.request_run_async_task)
@@ -345,7 +350,8 @@ class MainWindow(QMainWindow):
         action_str = self.tr(
             "exporting as a PNG image sequence",
             "This is passed as the {action} when asking the user about compacting the document if that can save pages")
-        if self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel:
+        if (self.document.page_layout.print_registration_marks_style != RegistrationProfileId.SISER.value
+                and self._ask_user_about_compacting_document(action_str) == StandardButton.Cancel):
             return
         self.current_dialog = dialog = SavePNGDialog(self, self.document)
         dialog.request_run_async_task.connect(self.request_run_async_task)
@@ -353,9 +359,12 @@ class MainWindow(QMainWindow):
         self.missing_images_manager.obtain_missing_images(dialog.open)
 
     def _artwork_output_allowed(self) -> bool:
+        if UI_LOCK_SEMAPHORE or self.current_dialog is not None:
+            return False
         try:
-            require_artwork_output_supported(self.document.page_layout.print_registration_marks_style)
-        except RuntimeError as error:
+            geometry = build_page_geometry(self.document.page_layout, PageType.UNDETERMINED, 0)
+            require_artwork_output_supported(self.document.page_layout.print_registration_marks_style, geometry)
+        except (ValueError, RuntimeError) as error:
             self.on_error_occurred(str(error))
             return False
         return True

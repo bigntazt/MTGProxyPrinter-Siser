@@ -197,10 +197,10 @@ def test_empty_and_oversized_calibration_remain_available(qtbot):
 
 
 def test_direct_output_guards_and_png_lifecycle(document_light,tmp_path,qtbot):
-    d = document_light; d.page_layout = layout()
+    d = document_light; d.page_layout = layout('A4')
     path = tmp_path/'untouched.pdf'; path.write_bytes(b'original')
     signal = Mock()
-    with pytest.raises(RuntimeError,match='calibration PDF export only'):
+    with pytest.raises(RuntimeError,match='does not support'):
         printing.PDFPrinter(d,str(path),signal)
     assert path.read_bytes() == b'original'
     with pytest.raises(RuntimeError):
@@ -231,6 +231,7 @@ def test_operation_time_guards_and_existing_pdf_success(document_light,tmp_path,
     pending = printing.PDFPrinter(d,str(tmp_path/'pending.pdf'),signal.advance_progress)
     task = printing.PNGRenderer(None,d,str(tmp_path/'pending.png'))
     d.page_layout.print_registration_marks_style = 'Siser'
+    d.page_layout.paper_size = 'A4'
     with patch.object(printing.QPainter,'begin',side_effect=AssertionError('No painter startup')):
         with pytest.raises(RuntimeError): pending.run()
         with pytest.raises(RuntimeError): renderer.print_document(Mock())
@@ -250,13 +251,14 @@ class RouteHost(QWidget):
     def __init__(self,document):
         super().__init__(); self.document = document; self.current_dialog = None
         self.on_error_occurred = Mock(); self.missing_images_manager = Mock()
+        self.request_run_async_task = Mock()
         self._ask_user_about_compacting_document = Mock(side_effect=AssertionError('No compaction'))
 
 
 def test_ui_guards_and_calibration_svg_access(document_light,qtbot,monkeypatch,tmp_path):
     monkeypatch.setattr(main_window,'UI_LOCK_SEMAPHORE',0)
     monkeypatch.setattr(dialogs,'read_path',lambda *a:str(tmp_path))
-    d = document_light; d.page_layout = layout(card_bleed=1.5*mm)
+    d = document_light; d.page_layout = layout('A4',card_bleed=1.5*mm)
     d.apply(ActionAddCard(create_card_with_pixmap('Local'),9))
     host = RouteHost(d); qtbot.addWidget(host)
     for action in (host.on_action_print_triggered,host.on_action_print_preview_triggered,
@@ -264,6 +266,7 @@ def test_ui_guards_and_calibration_svg_access(document_light,qtbot,monkeypatch,t
         action()
     assert host.on_error_occurred.call_count == 4
     host.missing_images_manager.obtain_missing_images.assert_not_called()
+    d.page_layout.paper_size = 'Letter'
     with patch.object(dialogs.SaveCalibrationPDFDialog,'open'):
         host.on_action_export_calibration_triggered()
     assert host.current_dialog is not None
@@ -281,6 +284,7 @@ def test_png_dialog_rechecks_before_tasks_and_print_count(document_light,qtbot,m
     document_light.page_layout = PageLayoutSettings(paper_size='Letter')
     dialog = dialogs.SavePNGDialog(host,document_light); qtbot.addWidget(dialog)
     document_light.page_layout.print_registration_marks_style = 'Siser'
+    document_light.page_layout.paper_size = 'A4'
     with qtbot.assertNotEmitted(dialog.request_run_async_task):
         dialog.on_accept()
     host.on_error_occurred.assert_called_once()

@@ -194,8 +194,13 @@ class PageScene(QGraphicsScene):
         if self.geometry is None:
             raise RuntimeError(f"Page geometry unavailable: {self.geometry_unavailable_reason}")
 
-    def render(self, *args, **kwargs):
+    def require_output_ready(self):
         self.require_geometry_ready()
+        if self.registration_unavailable_reason:
+            raise RuntimeError(f'Registration unavailable: {self.registration_unavailable_reason}')
+
+    def render(self, *args, **kwargs):
+        self.require_output_ready()
         return super().render(*args, **kwargs)
 
     def _presentation_position(self, x: float, y: float) -> QPointF:

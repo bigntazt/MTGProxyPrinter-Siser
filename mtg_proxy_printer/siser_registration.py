@@ -1,4 +1,4 @@
-"""Reference-backed frame resolution and M14's temporary output boundary."""
+"""Reference-backed frame resolution and supported ordinary-output validation."""
 
 import math
 from PySide6.QtCore import QCoreApplication
@@ -25,10 +25,11 @@ def resolve_siser_page_marks(geometry: PageGeometry) -> SiserPageMarks:
                      'and A4 landscape (297 × 210 mm), including equivalent custom sheets.')
 
 
-def require_artwork_output_supported(registration_style: str) -> None:
-    """Explicit M14 capability boundary; no clearance assessment or global state."""
+def require_artwork_output_supported(registration_style: str, geometry: PageGeometry) -> None:
+    """Validate the explicit frame, without clearance assessment or global state."""
     if registration_style == RegistrationProfileId.SISER.value:
-        raise RuntimeError(QCoreApplication.translate('SiserRegistration',
-            'Siser Page Marks currently supports calibration PDF export only.\n'
-            'Use "Export current page calibration sheet (PDF)" or choose another '
-            'registration style for ordinary printing/export.'))
+        try:
+            resolve_siser_page_marks(geometry)
+        except ValueError as error:
+            raise RuntimeError(QCoreApplication.translate('SiserRegistration',
+                'Artwork output unavailable: {reason}').format(reason=error)) from error

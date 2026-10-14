@@ -261,8 +261,7 @@ class SavePNGDialog(QFileDialog):
     def on_accept(self):
         logger.debug("User chose a file name, about to generate the PNG image sequence")
         try:
-            mtg_proxy_printer.print.require_artwork_output_supported(
-                self.document.page_layout.print_registration_marks_style)
+            mtg_proxy_printer.print._require_document_output_supported(self.document)
         except RuntimeError as error:
             self.parent().on_error_occurred(str(error))
             return
