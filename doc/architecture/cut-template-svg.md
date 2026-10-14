@@ -363,3 +363,11 @@ curve, readable unchanged labels/rulers/crosses, and two square oversized outlin
 No interactive native export, Leonardo import or physical rounded-corner cut was
 performed. Software verification does not qualify those later trials or a
 production Siser profile. M12 stops at the pushed review handoff.
+
+### M12 acceptance and integration for M13
+
+The architect accepted M12 at `d5a49fa2cba3d246d445b210c6ca88d982517042`.
+It was fast-forwarded into `siser-dev` and pushed before M13, without repeating
+accepted M12 tests. The preceding unmerged statement is the historical M12
+review handoff. M13's explicit-frame calculation and clearance diagnostics do
+not alter SVG export or the contour policy; see [siser-page-marks.md](siser-page-marks.md).

@@ -468,3 +468,12 @@ visual commands are recorded in [cut-template-svg.md](cut-template-svg.md#m12--s
 Software verification is complete. Native interactive export, Leonardo rounded
 import and physical rounded-corner cutting remain separate pending trials.
 No production Siser-profile integration or later milestone was started.
+
+### M12 acceptance and integration for M13
+
+Accepted M12 `d5a49fa2cba3d246d445b210c6ca88d982517042` was fast-forwarded
+into `siser-dev` and pushed before M13. No M12 tests were rerun for integration.
+M13 adds only explicit-frame mark calculation and geometric clearance diagnostics;
+calibration rendering and its rounded-contour policy are unchanged. See
+[siser-page-marks.md](siser-page-marks.md). M12's unmerged wording above records
+its historical review handoff, not the current integration state.
