@@ -200,3 +200,12 @@ Letter comparison remains accepted for its tested job. This milestone does not
 qualify universal optical clear zones, rounded physical cutting, equipment or
 Romeo. No hardware-derived correction, reflow, new schema or hidden fallback
 exists. M15 and new hardware qualification were not started.
+
+## M15 current-status update
+
+The preceding M14 calibration-only restrictions and "M15 not started" statements
+are historical handoff records. M15 now enables supported Siser ordinary PDF,
+PNG, native printing and native preview with explicit registration output readiness.
+The reference frames and no-mandatory-clearance decision remain unchanged.
+See [Siser artwork output](siser-artwork-output.md) for implementation, focused
+measurements, UI compaction policy, lifecycle limits and qualification scope.
