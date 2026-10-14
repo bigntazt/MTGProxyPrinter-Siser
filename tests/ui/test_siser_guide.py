@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from unittest.mock import Mock, patch
@@ -101,8 +102,13 @@ def test_minimal_compiled_help_resources(qtbot, monkeypatch, tmp_path):
         ElementTree.SubElement(resource, 'file', alias=path).text = str(root / 'resources' / path)
     ElementTree.ElementTree(tree).write(qrc, encoding='utf-8')
     binary = tmp_path / 'help.rcc'
-    compiler = Path(sys.executable).parent / 'pyside6-rcc.exe'
-    subprocess.run([str(compiler), '--binary', str(qrc), '-o', str(binary)], check=True,
+    compiler = shutil.which('pyside6-rcc', path=str(Path(sys.executable).parent))
+    if compiler is None:
+        compiler = shutil.which('pyside6-rcc')
+    if compiler is None:
+        pytest.fail('pyside6-rcc was not found. Use the existing PySide6 development '
+                    'environment and make its tools available on PATH.')
+    subprocess.run([compiler, '--binary', str(qrc), '-o', str(binary)], check=True,
                    capture_output=True, timeout=15)
     assert QResource.registerResource(str(binary))
     try:

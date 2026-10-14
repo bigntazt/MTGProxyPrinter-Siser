@@ -785,3 +785,27 @@ architecture-only edits. Printing/geometry matrices, historical acquisition and
 M08B checks, PDF/PNG/native suites, database/network/cache suites and hardware jobs
 were skipped. Trunk, historical evidence and existing review outputs remain intact.
 M16 stays unmerged for architect review; no subsequent implementation began.
+
+### M16 compiler-lookup portability follow-up (2026-10-14)
+
+The submitted help-resource test assumed the Windows-only name `pyside6-rcc.exe`.
+It now resolves the extension-independent PySide6 wrapper name `pyside6-rcc` with
+`shutil.which`, preferring the running Python executable's directory and then PATH.
+A missing wrapper fails with an actionable development-environment message; it is
+not skipped and no bare system rcc is substituted. Minimal help-only compilation,
+timeout, registration/cleanup and resource assertions are unchanged.
+
+Only the affected test was run:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest tests/ui/test_siser_guide.py::test_minimal_compiled_help_resources -q --timeout=30 --tb=short
+```
+
+**1 passed in 5.21 seconds**, using the existing Windows CPython 3.13.14 /
+PySide6-Qt 6.11.2 environment, child-only `QT_QPA_PLATFORM=windows` and venv Scripts
+PATH. Linux/macOS execution was not performed. The original five-case M16 result
+above remains historical evidence; the other four cases and unrelated suites were
+not rerun. `git diff --check` and the two-file scope review passed. No dependencies,
+production modules, guide/workflow text, preview, LDS, manifest, resource registry,
+printing/geometry behavior or historical evidence were changed by this correction.
+No hardware job or subsequent milestone was started.
