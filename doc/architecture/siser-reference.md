@@ -598,7 +598,8 @@ changes. Print/cut correspondence, preview and reopening have the operator quali
 above. Letter fresh-import repeatability has supplied provenance and matching PDFs;
 both A4 setup orders reach the same final geometry. The software prerequisite is closed.
 
-Production M08 remains gated: external-mark handling and independent-page alignment;
+At the historical M08A closeout, production M08 remained gated:
+external-mark handling and independent-page alignment;
 camera-anchor semantics/clear zones; active cutter/profile qualification; physical
 print scale/skew and cut alignment/repeatability; Romeo equivalence and contours-only
 behavior. No Siser marks/profile, guessed anchors, import compensation, calibration UI,
@@ -624,7 +625,41 @@ manifest. Pre-recalibration cut observations and the subsequent visually aligned
 recalibrated run are recorded without deriving corrections or accuracy claims.
 An independent static-scene proof uses PageGeometry card positions and the
 fixture's measured bars/0.176389 mm stroke through unchanged physical mapping.
-Direct PDF comparison and independent renders pass; physical A/B comparison
-remains pending. See [M08B proof and handoff](siser-external-mark-proof.md).
+Direct PDF comparison and independent renders passed. The software-preparation
+record originally marked physical A/B comparison pending; that historical status
+is superseded by the accepted closeout below. See
+[M08B proof and handoff](siser-external-mark-proof.md).
 This measured Letter-only experiment is not the production Siser profile and
 does not approve camera anchors, clear zones, other layouts or Romeo.
+
+### M08B accepted physical comparison and closeout
+
+Exact operator report from Wayne:
+
+> Both pages: Alignment = to baseline page, all cards identical.
+
+Wayne reports that both the Leonardo control and independently generated
+proof matched the baseline’s alignment, with all cards appearing identical.
+No distinguishable additional cutting error was observed for the generated
+proof. This is an operator-reported visual comparison, not a numerical
+accuracy specification.
+
+**M08B accepted: software proof verified and physical A/B alignment
+equivalent by operator observation for the tested Letter nine-card job.**
+
+The architect accepts the scoped physical result and authorizes this two-document
+closeout and fast-forward integration of accepted software plus closeout into
+`siser-dev`. The earlier numerical digital-PDF verification is distinct from the
+new operator-reported physical alignment. No additional dimensions, tolerances,
+registration-acquisition log, equipment/tool settings or confirmation of all
+instructed experimental conditions were supplied or inferred.
+
+No hardware-derived application correction was introduced. External-mark
+feasibility is satisfied for this job; configuration-driven Siser integration
+can now be planned. Other paper sizes/orientations, optical clear-zone limits,
+bleed conflicts, other equipment and Romeo equivalence remain unqualified by
+this result. The Letter-only proof renderer is not a production profile.
+Original evidence, package files, manifest, scripts and production code remain
+unchanged. Only documentation whitespace/scope/consistency checks apply; unrelated
+tests and prior acquisition checks were skipped. Production work awaits a separate
+architect implementation prompt.

@@ -1,9 +1,10 @@
 # M08B — controlled external-registration-mark proof
 
-Recorded 2026-10-13 (America/Los_Angeles). Software preparation only.
+Historical software-preparation record: 2026-10-13 (America/Los_Angeles).
 Starting integration: `243ac2f09aea058483f260f973ea8e1ed39d97aa` (accepted M11A,
 already on local/remote siser-dev). Branch `milestone/m08b-external-mark-proof`
-is left unmerged for architect review. Local/remote trunk remain
+was initially left unmerged for architect review. The authorized documentation
+closeout below completes M08B for fast-forward integration. Local/remote trunk remain
 `00202f988bef071c7070967e86c1490cb19114ba`.
 
 ## Preserved reference and operator evidence
@@ -156,6 +157,11 @@ explicit architect contract governed this new development-only code.
 
 ## A/B package and physical comparison
 
+The instructions and pending status in this section describe the historical
+software-preparation stage. The subsequent accepted physical result is recorded
+in the closeout below; instructed conditions are not independently confirmed by
+the operator's brief report.
+
 Exact package: `D:\Code\MTGProxyPrinter-Siser\.m01-output\m08b-review\`.
 Control PDF and LDS are byte-identical copies of preserved originals. Output
 hashes are recorded below and in `package-hashes.json` in that directory.
@@ -179,10 +185,50 @@ failure before workarounds. Do not reimport B into Leonardo, nudge marks/cuts,
 or apply a per-job offset. If A does not reproduce the calibrated baseline,
 the comparison is inconclusive until the control is restored; do not fix B.
 
-**Software proof verified; physical comparison pending.** No physical job was
-submitted, and no hardware-derived correction was applied. Success would qualify
+**Historical preparation status: software proof verified; physical comparison pending.**
+No physical job was submitted by the agent, and no hardware-derived correction
+was applied. Success would qualify
 external-mark equivalence only for this fixture/workflow, not other paper/layouts,
 printers or Romeo. Close corner-card/mark proximity remains a constraint, not an
 approved optical clear zone. Production integration requires configuration-driven
 geometry and explicit mark/bleed clearance; this fixed renderer is not the feature.
 No production Siser profile, settings, menu, dependencies or later milestone began.
+
+## Accepted physical A/B comparison and integration closeout
+
+The software proof was previously accepted at
+`ae3df7e530b29fd2181c1ea76910f82d904f254b`. Wayne has now supplied this exact
+operator report:
+
+> Both pages: Alignment = to baseline page, all cards identical.
+
+Wayne reports that both the Leonardo control and independently generated
+proof matched the baseline’s alignment, with all cards appearing identical.
+No distinguishable additional cutting error was observed for the generated
+proof. This is an operator-reported visual comparison, not a numerical
+accuracy specification.
+
+**M08B accepted: software proof verified and physical A/B alignment
+equivalent by operator observation for the tested Letter nine-card job.**
+
+The architect accepts this physical result and authorizes documentation-only
+closeout followed by fast-forward integration into `siser-dev`, without another
+review solely for this closeout. Previously verified digital PDF geometry remains
+the numerical software evidence; the newly reported physical alignment is visual
+operator evidence. No new dimensions, tolerances, acquisition log, equipment/tool
+settings or confirmation of every instructed condition are inferred. No further
+print is required solely to fill missing equipment metadata.
+
+No hardware-derived application correction was introduced. The external-mark
+feasibility prerequisite is satisfied for this job, so configuration-driven
+Siser integration can now be planned. Other paper sizes/orientations, optical
+clear-zone limits, bleed conflicts, other equipment and Romeo equivalence are
+not automatically qualified. The fixed proof renderer remains a development
+fixture, not a production profile.
+
+The original PDF/LDS, A/B package, reference measurements/hashes, manifest,
+proof/checker scripts and historical instructions remain unchanged. Closeout
+validation is limited to `git diff --check`, changed-file review and documentation
+consistency. No application tests, regeneration, PDF remeasurement, acquisition
+matrix or further physical job was performed. Production implementation awaits
+the architect's separate prompt; the milestone branch is retained after integration.
