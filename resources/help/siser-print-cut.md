@@ -4,7 +4,7 @@ Use MTGProxyPrinter to print the artwork and registration marks, and export its
 matching SVG cutting contours. Leonardo prepares and sends the cutting job.
 **Print the artwork PDF directly. Do not regenerate the artwork through Leonardo.**
 
-The workflows below succeeded on Wayne's Juliet with Leonardo 1.1.31. Their visual
+The workflows below succeeded on Bigntazt's Juliet with Leonardo 1.1.31. Their visual
 results do not guarantee numerical physical accuracy or compatibility with every
 printer, cutter, layout or material.
 
@@ -30,7 +30,7 @@ to compact it, use the separate operation before exporting both files.
 
 ## Tested Letter portrait route
 
-Wayne reported successful cuts of all nine cards, with visually identical
+Bigntazt reported successful cuts of all nine cards, with visually identical
 alignment on every card. Row spacing, column spacing and bleed were each **1 mm**.
 Artwork overlap with registration marks was intentional and did not prevent that
 successful result.
@@ -49,7 +49,7 @@ placement for other occupancies or every layout using Letter paper.
 
 ## Tested A4 landscape artwork / portrait-fed Juliet route
 
-Wayne reported that the A4 landscape artwork print cut successfully after
+Bigntazt reported that the A4 landscape artwork print cut successfully after
 reorienting its SVG on an A4 portrait Leonardo sheet. All cards appeared
 symmetrical and alignment was visually perfect, by operator observation.
 
