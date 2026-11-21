@@ -1,5 +1,13 @@
 # Changelog
 
+# Siser fork backport onto 0.36.2
+
+- Fix Scryfall catalog updates failing with a foreign-key error when a set code
+  changes while its Scryfall UUID stays the same. Preserve the internal set ID.
+  Backported from upstream Git 5445646c18b7511b2a3577e7737e9495d96bf2b4
+  (Fossil 87184cd1ccd85ed0a8c29263ccd23870a839fdee1fc3b315dcc62e9904ae8955).
+  This is a targeted fix, not a full 0.36.3/0.36.4 upgrade.
+
 # Version 0.36.2 (2026-11-03)  <a name="v0_36_2"></a>
 
 ## New features

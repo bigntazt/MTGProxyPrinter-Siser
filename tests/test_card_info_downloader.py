@@ -16,6 +16,7 @@
 
 import dataclasses
 import datetime
+from copy import deepcopy
 import sqlite3
 from collections.abc import Sequence
 from typing import NamedTuple, Callable
@@ -664,3 +665,58 @@ def test_import_works_after_network_error_during_first_try(card_db, exception):
         dw.populate_database(data_raising_exception)
     logger_mock.assert_called()
     fill_card_database_with_json_card(card_db, "regular_english_card")
+
+
+
+def test_set_code_change_preserves_internal_identity(card_db):
+    card = deepcopy(load_json("regular_english_card"))
+    fill_card_database_with_json_card(card_db, card)
+    db = card_db.db
+    set_id = db.execute("SELECT set_id FROM MTGSet WHERE set_scryfall_id = ?", (card["set_id"],)).fetchone()[0]
+    printing = tuple(db.execute("SELECT printing_id, set_id FROM Printing WHERE scryfall_id = ?", (card["id"],)).fetchone())
+    # An unrelated insert makes lastrowid differ from every valid internal set ID.
+    db.execute("INSERT INTO Card (card_id, oracle_id, is_card, english_name) VALUES (10001, ?, TRUE, ?)",
+               ("10000000-0000-0000-0000-000000000001", "Unrelated card"))
+    assert db.execute("SELECT last_insert_rowid()").fetchone()[0] != set_id
+    db.commit()
+    card["set"] = "tsa"
+    card["set_name"] = "Time Spiral renamed"
+    fill_card_database_with_json_card(card_db, card)
+    assert tuple(db.execute("SELECT set_id, set_code, set_name FROM MTGSet WHERE set_scryfall_id = ?",
+                            (card["set_id"],)).fetchone()) == (set_id, "tsa", "Time Spiral renamed")
+    assert tuple(db.execute("SELECT printing_id, set_id FROM Printing WHERE scryfall_id = ?",
+                            (card["id"],)).fetchone()) == printing
+    assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+@pytest.mark.parametrize("failure", [RuntimeError, sqlite3.IntegrityError])
+def test_import_failure_rolls_back_set_change_and_timestamp(card_db, failure):
+    card = deepcopy(load_json("regular_english_card"))
+    fill_card_database_with_json_card(card_db, card)
+    db = card_db.db
+    before = list(db.iterdump())
+    timestamps = list(map(tuple, db.execute("SELECT * FROM LastDatabaseUpdate ORDER BY update_id")))
+    changed = deepcopy(card)
+    changed.update(set="tsa", set_name="Time Spiral renamed", collector_number="999")
+    task = mtg_proxy_printer.async_tasks.card_info_downloader.DatabaseImportTask(MagicMock(), db, ":memory:")
+    errors = []
+    task.error_occurred.connect(errors.append)
+
+    def interrupted_stream():
+        yield changed
+        # Prove that writes occurred before the injected failure.
+        assert db.execute("SELECT set_code FROM MTGSet WHERE set_scryfall_id = ?",
+                          (card["set_id"],)).fetchone()[0] == "tsa"
+        raise failure("intentional failure after set update")
+
+    row_factory = db.row_factory
+    db.row_factory = None  # Importer connections return tuples, as in the existing import helper.
+    try:
+        task.populate_database(interrupted_stream())
+    finally:
+        db.row_factory = row_factory
+    assert len(errors) == 1 and "intentional failure after set update" in errors[0]
+    assert not db.in_transaction
+    assert list(db.iterdump()) == before
+    assert list(map(tuple, db.execute("SELECT * FROM LastDatabaseUpdate ORDER BY update_id"))) == timestamps
+    assert db.execute("PRAGMA foreign_key_check").fetchall() == []
