@@ -147,8 +147,9 @@ class AddCardWidget(QWidget):
         logger.debug("Card database content changed. Refreshing model lists.")
 
         model = self.ui.card_name_list.selectionModel()
-        current_name = self.current_card_name
-        current_set_code = self.current_set_name
+        current_printing = self._read_card_data_from_ui()
+        current_name = current_printing.name
+        current_set_code = current_printing.set_code
         available_card_names = self.card_db.get_card_names(new_language or self.current_language)
         self.card_name_model.setStringList(available_card_names)
         if current_name in available_card_names:
@@ -179,7 +180,15 @@ class AddCardWidget(QWidget):
             model.clearSelection()
             self.set_name_list_selection_changed(model.selection())
             return
-        # TODO: Similar steps for collector numbers
+        if (new_language is None
+                and self.current_card_name == current_printing.name
+                and self.current_set_name == current_printing.set_code
+                and self.current_language == current_printing.language):
+            collector_numbers = self.collector_number_model.stringList()
+            if current_printing.collector_number in collector_numbers:
+                index = self.collector_number_model.index(
+                    collector_numbers.index(current_printing.collector_number), 0)
+                self.ui.collector_number_list.selectionModel().select(index, SelectionFlag.ClearAndSelect)
 
     @Slot(QItemSelection)
     def card_name_list_selection_changed(self, current: QItemSelection):
