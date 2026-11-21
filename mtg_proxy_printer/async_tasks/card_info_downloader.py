@@ -201,7 +201,14 @@ class StreamTask(CardInfoDownloadTaskBase):
         logger.debug(f"{self.__class__.__name__}: entering cancel()")
         if self.open_file is not None:
             self.open_file.close()
-        self.queue.shutdown(True)
+        try:
+            self.queue.shutdown(True)  # Available on Python 3.13+
+        except AttributeError:  # Python 3.11/3.12 compatibility workaround.
+            try:
+                while True:
+                    self.queue.get_nowait()
+            except queue.Empty:
+                pass
         logger.debug(f"{self.__class__.__name__}: Cancel completed")
 
 
@@ -923,6 +930,7 @@ def _get_printing_filter_data(card: CardDataType, active_filters: list[str]):
     if "promopack" in promo_types: filter_applies("promo-promopack")
     # Specific format legality. Use .get() instead of [] to not fail
     # if Scryfall removes one of the listed formats in the future.
+    if card.get("game_changer"): filter_applies("commander-gamechanger")
     if legalities.get("brawl") == "banned": filter_applies("banned-in-brawl")
     if legalities.get("commander") == "banned": filter_applies("banned-in-commander")
     if legalities.get("historic") == "banned": filter_applies("banned-in-historic")

@@ -1,10 +1,33 @@
 # Changelog
 
-# Next version (in development)
+# Version 0.36.2 (2026-11-03)  <a name="v0_36_2"></a>
+
+## New features
+
+- Card filter for hiding Commander Game-changer cards.
 
 ## Fixed issues
 
+- Implement app icon theme tinting on non-Linux platforms. This fixes unreadable
+  icons (black on dark-gray) on Windows/Mac when using a global dark theme for applications.
+- The network error message box gains ability to hide itself for the current session.
+  This should make the app less annoying to use while offline.
+- Fixed crash caused by trying to add cards from stale data in the card search after updating
+  the printing filters in the settings.
+
+## Other
+
+- Windows builds now ship with latest Python 3.15 and Qt 6.12
+
+# Version 0.36.1 (2026-10-28)  <a name="v0_36_1"></a>
+
+## Fixed issues
+
+- Fixed crash when trying to add blank spots to the document, or when loading a document containing them.
 - Optimized set symbol downloads: Avoid duplicate downloads when sets share the same symbol.
+- The printing preferences and hiding settings now consistently handle system-wide font changes.
+- Fixed DFC check cards for cards in newer sets not generating correctly. Newer sets use slightly different image size that is 
+  one pixel smaller (744x1040) compared to the previous (745x1040) size, which threw off the logic generating them.
 
 # Version 0.36.0 (2026-07-31)  <a name="v0_36_0"></a>
 

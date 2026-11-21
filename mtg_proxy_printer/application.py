@@ -43,9 +43,10 @@ import mtg_proxy_printer.async_tasks.card_info_downloader
 import mtg_proxy_printer.ui.common
 import mtg_proxy_printer.ui.main_window
 import mtg_proxy_printer.ui.settings_window
-import mtg_proxy_printer.progress_meter
 from mtg_proxy_printer.async_tasks.base import AsyncTask, AsyncTaskRunner
+from mtg_proxy_printer.icon_theme_manager import PaletteIconTheme
 from mtg_proxy_printer.logger import get_logger
+from mtg_proxy_printer.ui.add_card import AddCardWidget
 
 logger = get_logger(__name__)
 del get_logger
@@ -175,8 +176,9 @@ class Application(QApplication):
         settings_window.request_run_async_task.connect(self.run_async_task)
         settings_window.custom_card_corner_style_changed.connect(document.on_custom_card_corner_style_changed)
         settings_window.document_settings_updated.connect(document.apply)
+        add_card_widget: AddCardWidget = main_window.ui.central_widget.ui.add_card_widget
         settings_window.preferred_language_changed.connect(
-            main_window.ui.central_widget.ui.add_card_widget.on_settings_preferred_language_changed)
+            add_card_widget.on_settings_preferred_language_changed)
         main_window.ui.action_show_settings.triggered.connect(
             partial(mtg_proxy_printer.ui.common.show_wizard_or_dialog, settings_window))
         return settings_window
@@ -197,8 +199,8 @@ class Application(QApplication):
         if task.report_progress:
             main_window.progress_bar_manager.add_task(task)
         if isinstance(task, DatabaseImportTask):
+            logger.debug(f"DatabaseImportTask received. Will enqueue read transaction restart on completion.")
             task.task_completed.connect(self.card_db.restart_transaction, BlockingQueuedConnection)
-            task.task_completed.connect(self.card_db.card_data_updated, BlockingQueuedConnection)
         logger.debug(f"Starting task {task}")
         QThreadPool.globalInstance().start(AsyncTaskRunner(task))
 
@@ -272,13 +274,18 @@ class Application(QApplication):
                 "No native icon theme support, no system theme set, or icon theme override setting enabled, "
                 "defaulting to internal icons."
             )
+            internal_theme_name = "breeze"
+            theme_search_paths = QIcon.themeSearchPaths()
             if not mtg_proxy_printer.ui.common.HAS_COMPILED_RESOURCES:
                 # If the compiled resources are available, the default search path ":/icons" is sufficient. Only append
                 # the resources directory file system path, if directly running from the source distribution.
-                theme_search_paths = QIcon.themeSearchPaths()
-                theme_search_paths.append(mtg_proxy_printer.ui.common.ICON_PATH_PREFIX)
-                QIcon.setThemeSearchPaths(theme_search_paths)
-            QIcon.setThemeName("breeze")
+                icon_path = mtg_proxy_printer.ui.common.ICON_PATH_PREFIX
+                theme_search_paths.append(icon_path)
+                source_theme = f"{icon_path}/{internal_theme_name}"
+            else:
+                source_theme = f":/icons/{internal_theme_name}"
+            QIcon.setThemeSearchPaths(theme_search_paths)
+            self.palette_icon_theme = PaletteIconTheme(self, source_theme)
         else:
             logger.debug(f"Using system-provided icon theme '{fallback_icon_theme}'")
 

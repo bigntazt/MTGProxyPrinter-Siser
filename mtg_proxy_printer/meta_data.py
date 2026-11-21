@@ -16,7 +16,7 @@
 
 # Keep fork settings, databases, caches, logs, and legacy migrations separate from upstream.
 PROGRAMNAME = "MTGProxyPrinter-Siser"
-__version__ = "0.36.0"
+__version__ = "0.36.2"
 COPYRIGHT = "© 2020-2026 Thomas Hess"
 HOME_PAGE = "https://chiselapp.com/user/luziferius/repository/MTGProxyPrinter"
 

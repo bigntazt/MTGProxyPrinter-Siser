@@ -111,12 +111,24 @@ excludes = [
     "lib2to3",
     "pep517",
     "pint.testsuite",  # Ignore the internal test suite
+    "flexcache.testsuite",
+    "flexparser.testsuite",
     "pydoc_data",
     "pytest",
     "sqlite3.test",  # Ignore the internal test suite
     "tkinter",
     "toml",
     "ctypes.test",  # Empty package with readme and download scripts
+    "asyncio",
+    "unittest",
+    "xmlrpc",
+    "multiprocessing",
+    "concurrent",
+    "platformdirs.android",
+    "platformdirs.ios",
+    "platformdirs.macos",
+    "platformdirs.unix",
+    "sysconfig",
     # Unused PySide6 components
     "PySide6.glue",
     "PySide6.include",
@@ -141,6 +153,9 @@ excludes = [
     "PySide6.support",
     "PySide6.translations.qtwebengine_locales",
     "PySide6.typesystems",
+    "tarfile",
+    "subprocess",
+    "_ast_unparse",
 ]
 [tool.cxfreeze.bdist_msi]
 # The GUID upgrade_code token is used by Windows to identify the application being installed.
@@ -153,7 +168,7 @@ license_file = "resources/gpl-3.0.rtf"
 
 [tool.tox]
 requires = ["tox>=4.41"]
-env_list = ["unit_tests", "test_cx_freeze_build-cx_8_6"]
+env_list = ["unit_tests", "test_cx_freeze_build-cx_8_7"]
 
 
 [tool.tox.env_run_base]
@@ -174,19 +189,20 @@ pass_env = [
 [tool.tox.env_base.python]
 base = ["tox.tool.env_run_base"]
 factors = [
-    { prefix = "3.", start = 11, stop = 14 },
+    { prefix = "3.", start = 11, stop = 15 },
 ]
 
 [tool.tox.env_base.qt]
 base = ["tox.tool.env_run_base"]
 factors = [
-    { prefix = "Qt6_", start = 8, stop = 11 },
+    { prefix = "Qt6_", start = 8, stop = 12 },
 ]
 deps = [
     {replace = "if", condition = "factor.Qt6_8", then = ["PySide6-Essentials>=6.8,<6.9"], extend = true},
     {replace = "if", condition = "factor.Qt6_9", then = ["PySide6-Essentials>=6.9,<6.10"], extend = true},
     {replace = "if", condition = "factor.Qt6_10", then = ["PySide6-Essentials>=6.10,<6.11"], extend = true},
     {replace = "if", condition = "factor.Qt6_11", then = ["PySide6-Essentials>=6.11,<6.12"], extend = true},
+    {replace = "if", condition = "factor.Qt6_12", then = ["PySide6-Essentials>=6.12,<6.13"], extend = true},
 ]
 basepython = [
     {replace = "if", condition = "factor.Qt6_8", then = "3.12"},
@@ -230,7 +246,7 @@ commands_post = [
 base = ["tool.tox.env_pkg_base"]
 description = "Build the application with cx_Freeze and verify it can launch and reach the Qt event loop."
 labels = ["tests"]
-factors = [{ prefix = "cx_8_", start = 5, stop = 6 },]
+factors = [{ prefix = "cx_8_", start = 5, stop = 7 },]
 allowlist_externals = [
     { replace = "if", condition = "factor.win32", then = ["{tox_root}{/}scripts{/}clean_windows_build.bat"], extend = true},
     "{tox_root}{/}build{/}bundle_test{/}MTGProxyPrinter",
@@ -238,7 +254,9 @@ allowlist_externals = [
 deps = [
     {replace = "if", condition = "factor.cx_8_5", then = ["cx_Freeze>=8.5,<8.6"], extend = true},
     {replace = "if", condition = "factor.cx_8_6", then = ["cx_Freeze>=8.6,<8.7"], extend = true},
+    {replace = "if", condition = "factor.cx_8_7", then = ["cx_Freeze>=8.7,<8.8"], extend = true},
 ]
+
 commands = [
     ["cxfreeze", "build", "--build-exe", "build{/}bundle_test"],
     { replace = "if", condition = "factor.win32", then = [["{tox_root}{/}scripts{/}clean_windows_build.bat", "build{/}bundle_test"]], extend = true},

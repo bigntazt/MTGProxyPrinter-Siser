@@ -158,6 +158,7 @@ DEFAULT_SETTINGS["printing-filter"] = {
     "banned-in-pioneer": "False",
     "banned-in-standard": "False",
     "banned-in-vintage": "False",
+    "commander-gamechanger": "False",
     "white-bordered": "False",
     "gold-bordered": "False",
     "borderless": "False",
@@ -609,7 +610,7 @@ def _validate_string_is_in_set(section: SectionProxy, defaults: SectionProxy, va
 
 
 def _validate_color(section: SectionProxy, defaults: SectionProxy, key: str):
-    if not QColor.isValidColorName(section.get(key)):
+    if not QColor.isValidColorName(section.get(key) or ""):
         _restore_default(section, defaults, key)
 
 

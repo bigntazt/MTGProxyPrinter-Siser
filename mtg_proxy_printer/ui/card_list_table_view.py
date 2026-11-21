@@ -32,7 +32,6 @@ ItemDataRole = Qt.ItemDataRole
 class CardListTableView(QTableView):
     """
     This table view shows a CardListModel, and sets up all item delegates used for proper display and validation.
-
     """
     changed_selection_is_empty = Signal(bool)
 
@@ -59,7 +58,8 @@ class CardListTableView(QTableView):
     def _on_selection_changed(self):
         selection = self.selectionModel().selection()
         is_empty = selection.isEmpty()
-        logger.debug(f"Selection changed: Currently selected cells: {selection.count()}")
+        selection_size = sum(range_.height()*range_.width() for range_ in selection)
+        logger.debug(f"Selection changed: Currently selected cells: {selection_size}")
         self.changed_selection_is_empty.emit(is_empty)
 
     def _setup_language_delegate(self):

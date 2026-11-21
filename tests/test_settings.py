@@ -13,10 +13,10 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from collections.abc import Iterable
 from itertools import chain
 from numbers import Real
 from pathlib import Path
+from typing import Iterable
 from unittest.mock import patch
 
 import pint
@@ -29,6 +29,8 @@ from tests.helpers import quantity_between
 
 
 def between_including(lower: Real, upper: Real):
+    if lower == upper:
+        return equal_to(lower)
     return all_of(greater_than_or_equal_to(lower), less_than_or_equal_to(upper))
 
 
@@ -202,7 +204,10 @@ def test_clamp_to_supported_range(value: float, expected: float):
     assert_that(clamped_value, is_(close_to(expected, 0.001)))
 
 
-@pytest.mark.parametrize("source_file", list(Path(__file__).with_name("settings_files").glob("*.ini")))
+SETTINGS_FILES_DIRECTORY = Path(__file__).with_name("settings_files")
+
+
+@pytest.mark.parametrize("source_file", list(SETTINGS_FILES_DIRECTORY.glob("*.ini")))
 def test_migration_does_not_crash(source_file: Path, default_settings: ConfigParser):
     """
     The settings_files directory contains sample configuration files from throughout the application history.
@@ -211,3 +216,22 @@ def test_migration_does_not_crash(source_file: Path, default_settings: ConfigPar
     with patch("mtg_proxy_printer.settings.config_file_path", source_file), \
             patch("mtg_proxy_printer.settings.settings", default_settings):
         mtg_proxy_printer.settings.read_settings_from_file()
+
+
+def test_migration_test_verifies_against_default_settings_from_latest_version():
+    """Each released version must pass the test suite.
+    So by ensuring that a settings file for the current version is present,
+    this test guarantees that the test suite gathers sample data as versions get released.
+
+    1-liner to write the current default config to a settings file in the tests directory:
+
+python -c "from pathlib import Path; import mtg_proxy_printer; from mtg_proxy_printer import settings; from \
+mtg_proxy_printer import __version__; settings.settings = settings.DEFAULT_SETTINGS; \
+settings.config_file_path = Path(mtg_proxy_printer.__file__).parent.parent / \
+f'tests/settings_files/settings-v{__version__}.ini';
+print(settings.config_file_path); settings.write_settings_to_file()"
+
+    """
+    from mtg_proxy_printer.meta_data import __version__
+    expected_config = SETTINGS_FILES_DIRECTORY/f"settings-v{__version__}.ini"
+    assert_that(expected_config.is_file(), is_(True))

@@ -56,3 +56,20 @@ def test_add_card_works_with_art_series_card(qtbot: QtBot, card_db: CardDatabase
     )
     add_card_widget.ui.copies_input.setValue(1)
     assert_that(add_card_widget._read_card_data_from_ui(), is_(equal_to(expected_card_identification_data)))
+
+
+@pytest.mark.parametrize("widget_class", [HorizontalAddCardWidget, VerticalAddCardWidget])
+def test_database_refresh_retains_card_and_set_selection(qtbot, card_db, image_db, widget_class):
+    fill_card_database_with_json_card(card_db, "english_double_faced_art_series_card")
+    widget = widget_class()
+    qtbot.addWidget(widget)
+    widget.set_databases(image_db)
+    widget.language_combo_box_changed("en")
+    model = widget.card_name_filter_model
+    row = next(row for row in range(model.rowCount())
+               if model.index(row, 0).data() == "Clearwater Pathway")
+    widget.ui.card_name_list.selectionModel().select(model.index(row, 0), ClearAndSelect)
+    expected = widget._read_card_data_from_ui()
+    assert expected == CardIdentificationData("en", "Clearwater Pathway", "aznr", "25")
+    card_db.restart_transaction()
+    qtbot.waitUntil(lambda: widget._read_card_data_from_ui() == expected)

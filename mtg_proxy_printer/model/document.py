@@ -24,8 +24,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Slot, Signal, \
-    QPersistentModelIndex, QMimeData
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Slot, Signal, QPersistentModelIndex, QMimeData
 
 from mtg_proxy_printer.async_tasks.base import AsyncTask
 from mtg_proxy_printer.async_tasks.image_downloader import SingleDownloadTask, SingleActions
@@ -513,7 +512,7 @@ class Document(QAbstractItemModel):
         name = self.tr(
             "Empty Placeholder",
             "Card name of the blank placeholder that can be added to keep slots on a page free.")
-        card = Card(name, MTGSet("", ""), "", "", "", True, "", "", True, size, 0, False, pixmap)
+        card = Card(name, MTGSet("", ""), "", "", "", True, "", "", True, size, False, pixmap)
         return card
 
     def get_card_indices_of_type(self, page_type: PageType):
@@ -548,11 +547,8 @@ class Document(QAbstractItemModel):
 
     def _get_page_content_as_image_keys(self, page: Page) -> Iterable[ImageKey]:
         image_db = self.image_db
-        # TODO: This does not handle custom image cards. Introduce ImageQuality.of_card(card),
-        #  which handles all possible combinations internally
         return (
-            ImageKey(card.scryfall_id, card.is_front,
-                     ImageQuality.high_resolution if card.highres_image else ImageQuality.low_resolution)
+            ImageKey(card.scryfall_id, card.is_front, ImageQuality.of_card(card))
             for container in page
             if not (card := container.card).is_custom_card
                and not isinstance(card, CheckCard)
@@ -578,11 +574,15 @@ class Document(QAbstractItemModel):
         )
 
     def find_relevant_index_ranges(self, to_find: AnyCardType, column: PageColumns):
-        """Finds all indices relevant for the given card."""
+        """
+        Finds all indices relevant for the given card. This is used when editing custom cards.
+        When a card is changed in one location, all UI elements showing it need to update. When the name is updated,
+        also the Page list needs updating its summary view.
+        """
         # TODO: This runs in O(n)
         for page_row, page in enumerate(self.pages):
             instance_rows = to_list_of_ranges(
-                # Use is to find exact same instances
+                # Use "is" to find exact same instances
                 (row for row, container in enumerate(page) if container.card is to_find)
             )
             if instance_rows:

@@ -102,7 +102,7 @@ class MTGSet:
 
     @functools.cache
     def _render_icon(self) -> QIcon:
-        engine = SVGIconEngine(self.svg_icon)
+        engine = SVGIconEngine(self.svg_icon or b"")
         icon = QIcon(engine)
         return icon
 
@@ -213,18 +213,14 @@ class CustomCard:
     highres_image: bool = dataclasses.field(compare=False)
     size: CardSize = dataclasses.field(compare=False)
     is_dfc: bool = dataclasses.field(compare=True)
-    source_image_file: bytes = dataclasses.field(default=None, compare=False)
+    source_image_file: bytes = dataclasses.field(compare=False)
 
     def requested_page_type(self) -> PageType:
-        if self.image_file is None:
-            return PageType.OVERSIZED if self.is_oversized else PageType.REGULAR
         return PageType.OVERSIZED if self.image_file.size() == CardSizes.OVERSIZED.as_qsize_px() else PageType.REGULAR
 
     @functools.lru_cache(maxsize=len(CardCorner))
     def corner_color(self, corner: CardCorner) -> QColor:
         """Returns the color of the card at the given corner. """
-        if self.image_file is None:
-            return QColorConstants.Transparent
         sample_area = self.image_file.copy(QRect(
             QPoint(
                 round(self.image_file.width() * corner.value[0]),
