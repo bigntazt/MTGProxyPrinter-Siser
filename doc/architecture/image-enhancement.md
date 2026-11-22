@@ -73,3 +73,20 @@ Full-resolution PNGs and local preview sheets remain private. M22 generates no
 printable PDF and performs no physical print/cut test. Any later proof must embed
 the actual target pixels at the canonical physical size without application
 normalization.
+
+## M23: item-local raster geometry seam
+
+M23 addresses the physical-size and scene-mapping prerequisites identified above.
+Card and CustomCard now classify page type from existing size metadata; CheckCard
+still delegates. CardItem accepts an optional keyword-only native QPixmap and
+maps only its artwork child into the canonical rectangle. A canonical style
+proxy supplies decorations; default component-based CheckCard corner colors
+remain unchanged. Acquisition, cache entries, composition, persistence, page
+geometry and printing are unchanged.
+
+See [Card raster and physical geometry](card-raster-geometry.md) for contracts,
+focused validation and offscreen reference limitations. This seam enables no
+provider, target selector, derivative cache, high-resolution CheckCard composition
+or complete 600/1200-PPI export workflow. Original/Lanczos remains the baseline;
+no neural default has been selected. Later integration remains optional and
+external as described above.

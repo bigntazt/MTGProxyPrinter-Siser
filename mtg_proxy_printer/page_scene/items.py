@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsPolygonItem, QGraphi
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 
 from mtg_proxy_printer.model.card import AnyCardType, CardCorner
+from mtg_proxy_printer.page_scene.card_raster import PreparedCardRaster
 from mtg_proxy_printer.model.document import Document
 from mtg_proxy_printer.model.page_layout import PageLayoutSettings
 from mtg_proxy_printer.units_and_sizes import unit_registry, RESOLUTION, Quantity
@@ -133,12 +134,12 @@ class CardBleedItem(QGraphicsPixmapItem):
 class CardBleedCornerItem(QGraphicsPolygonItem):
     PEN = QPen(QColorConstants.Transparent)
 
-    def __init__(self, card: AnyCardType, corner: CardCorner):
+    def __init__(self, raster: PreparedCardRaster, corner: CardCorner, corner_length: int):
         super().__init__()
-        self.corner_length = 50 if card.is_oversized else 32
+        self.corner_length = corner_length
         transform = QTransform()
-        width = card.image_file.width()
-        height = card.image_file.height()
+        width = raster.width
+        height = raster.height
         if corner == CardCorner.TOP_RIGHT:
             transform.scale(-1, 1)
             self.setPos(width, 0)
@@ -150,7 +151,7 @@ class CardBleedCornerItem(QGraphicsPolygonItem):
             self.setPos(width, height)
         self.setTransform(transform, False)
         self.setPen(self.PEN)
-        self.setBrush(card.corner_color(corner))
+        self.setBrush(raster.corner_colors[corner])
         self.setZValue(RenderLayers.BLEEDS.value+0.1)
 
     def update_bleed_size(self, h_px: int, v_px: int):
@@ -188,12 +189,12 @@ class CardBleeds(typing.NamedTuple):
     bottom_right: CardBleedCornerItem
 
     @classmethod
-    def from_card(cls, card: AnyCardType) -> "CardBleeds":
-        pixmap = card.image_file
-        if pixmap is None:
-            raise RuntimeError(f"Card {card} pixmap is None")
-        width = pixmap.width()
-        height = pixmap.height()
+    def from_card(cls, card: AnyCardType, raster: PreparedCardRaster | None = None) -> "CardBleeds":
+        raster = raster if raster is not None else PreparedCardRaster.from_card(card)
+        pixmap = raster.style
+        width = raster.width
+        height = raster.height
+        corner_length = 50 if card.is_oversized else 32
         h_size = QSize(width, 1)
         v_size = QSize(1, height)
         bleeds = cls(
@@ -202,10 +203,10 @@ class CardBleeds(typing.NamedTuple):
             CardBleedItem(pixmap, QRect(QPoint(1, 0), v_size)),
             CardBleedItem(pixmap, QRect(QPoint(width - 1, 0), v_size), QPoint(width, 0)),
 
-            CardBleedCornerItem(card, CardCorner.TOP_LEFT),
-            CardBleedCornerItem(card, CardCorner.TOP_RIGHT),
-            CardBleedCornerItem(card, CardCorner.BOTTOM_LEFT),
-            CardBleedCornerItem(card, CardCorner.BOTTOM_RIGHT),
+            CardBleedCornerItem(raster, CardCorner.TOP_LEFT, corner_length),
+            CardBleedCornerItem(raster, CardCorner.TOP_RIGHT, corner_length),
+            CardBleedCornerItem(raster, CardCorner.BOTTOM_LEFT, corner_length),
+            CardBleedCornerItem(raster, CardCorner.BOTTOM_RIGHT, corner_length),
         )
         bleeds.update_bleeds(0, 0, 0, 0)
         return bleeds
@@ -226,23 +227,30 @@ class CardItem(QGraphicsItemGroup):
 
     CORNER_SIZE_PX = 50
 
-    def __init__(self, index: QModelIndex, document: Document, parent: QGraphicsItem | None = None):
+    def __init__(self, index: QModelIndex, document: Document, parent: QGraphicsItem | None = None,
+                 *, raster: QPixmap | None = None):
         super().__init__(parent)
         document.page_layout_changed.connect(self.on_page_layout_changed)
         card: AnyCardType = index.data(ItemDataRole.UserRole)
         self.index = QPersistentModelIndex(index)
-        self.card_pixmap_item = self._create_pixmap_item(card)
+        self._raster = PreparedCardRaster.from_card(card, raster)
+        self.card_pixmap_item = self._create_pixmap_item(self._raster.artwork)
         self.watermark_item = self._create_watermark(document)
-        self.bleeds = CardBleeds.from_card(card)
+        self.bleeds = CardBleeds.from_card(card, self._raster)
         # A transparent pen reduces the corner size by 0.5 pixels around, lining it up with the pixmap outline
         self.corner_pen = QPen(QColorConstants.Transparent)
-        self.corners = self.create_corners(card, document.page_layout.draw_sharp_corners)
+        self.corners = self.create_corners(self._raster, document.page_layout.draw_sharp_corners)
         self._draw_content()
+        # addToGroup preserves scene-relative transforms; establish the final local mapping afterward.
+        self.card_pixmap_item.setPos(0, 0)
+        self.card_pixmap_item.setTransform(QTransform.fromScale(
+            self._raster.width/self._raster.artwork.width(),
+            self._raster.height/self._raster.artwork.height()))
         self.setZValue(RenderLayers.CARDS.value)
 
     @staticmethod
-    def _create_pixmap_item(card: AnyCardType):
-        item = QGraphicsPixmapItem(card.image_file)
+    def _create_pixmap_item(artwork: QPixmap):
+        item = QGraphicsPixmapItem(artwork)
         item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
         return item
 
@@ -253,22 +261,20 @@ class CardItem(QGraphicsItemGroup):
         self._update_watermark(item, page_layout)
         return item
 
-    def create_corners(self, card: AnyCardType, draw_corners: bool) -> list[QGraphicsRectItem]:
-        image = card.image_file
-        card_height, card_width = image.height(), image.width()
-        card_width = image.width()
+    def create_corners(self, raster: PreparedCardRaster, draw_corners: bool) -> list[QGraphicsRectItem]:
+        card_height, card_width = raster.height, raster.width
         left, right = 0, card_width-self.CORNER_SIZE_PX
         top, bottom = 0, card_height-self.CORNER_SIZE_PX
         return [
-            self._create_corner(card, CardCorner.TOP_LEFT, QPointF(left, top), draw_corners),
-            self._create_corner(card, CardCorner.TOP_RIGHT, QPointF(right, top), draw_corners),
-            self._create_corner(card, CardCorner.BOTTOM_LEFT, QPointF(left, bottom), draw_corners),
-            self._create_corner(card, CardCorner.BOTTOM_RIGHT, QPointF(right, bottom), draw_corners),
+            self._create_corner(raster, CardCorner.TOP_LEFT, QPointF(left, top), draw_corners),
+            self._create_corner(raster, CardCorner.TOP_RIGHT, QPointF(right, top), draw_corners),
+            self._create_corner(raster, CardCorner.BOTTOM_LEFT, QPointF(left, bottom), draw_corners),
+            self._create_corner(raster, CardCorner.BOTTOM_RIGHT, QPointF(right, bottom), draw_corners),
         ]
 
-    def _create_corner(self, card: AnyCardType, corner: CardCorner, position: QPointF, opaque: bool) -> QGraphicsRectItem:
+    def _create_corner(self, raster: PreparedCardRaster, corner: CardCorner, position: QPointF, opaque: bool) -> QGraphicsRectItem:
         rect = QGraphicsRectItem(0, 0, self.CORNER_SIZE_PX, self.CORNER_SIZE_PX)
-        color = card.corner_color(corner)
+        color = raster.corner_colors[corner]
         rect.setPos(position)
         rect.setPen(self.corner_pen)
         rect.setBrush(color)
@@ -298,4 +304,8 @@ class CardItem(QGraphicsItemGroup):
     def _draw_content(self):
         items = itertools.chain(self.corners, self.bleeds, [self.card_pixmap_item, self.watermark_item])
         for item in items:
+            position, transform = item.pos(), item.transform()
             self.addToGroup(item)
+            # These inputs are already canonical local coordinates, including with a transformed parent.
+            item.setTransform(transform)
+            item.setPos(position)
