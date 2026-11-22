@@ -246,6 +246,9 @@ class CardItem(QGraphicsItemGroup):
         self.card_pixmap_item.setTransform(QTransform.fromScale(
             self._raster.width/self._raster.artwork.width(),
             self._raster.height/self._raster.artwork.height()))
+        # Qt caches group bounds while grouping; refresh after the final artwork mapping.
+        self.removeFromGroup(self.card_pixmap_item)
+        self.addToGroup(self.card_pixmap_item)
         self.setZValue(RenderLayers.CARDS.value)
 
     @staticmethod

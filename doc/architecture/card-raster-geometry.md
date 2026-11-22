@@ -48,8 +48,7 @@ canonical_height)` within numerical tolerance. The group is not scaled.
 
 Each child retains its intended local position/transform after addToGroup;
 otherwise Qt's preservation of scene-relative transforms would counteract a
-transformed positional parent. Ownership remains the existing single group-add
-and single scene-add approach. No global raster cache is added. The frozen
+transformed positional parent. After final artwork mapping, a paired removeFromGroup/addToGroup refresh recomputes cached bounds. Scene insertion and retained references remain unchanged. No global raster cache is added. The frozen
 dataclass freezes field bindings, not the mutable Qt values/dictionary inside.
 
 Default corner colors still come from `card.corner_color()`, preserving
@@ -156,3 +155,68 @@ the baseline and final pages. This limits typography assessment; no claim of
 native interactive verification, enhancement quality, complete target-PPI
 export, or physical print/cut quality is made. No normal application launch,
 catalog operation, inference or hardware job was performed.
+
+## Architect follow-up: constructor-time group bounds
+
+Qt/PySide6 6.11.2 caches group bounds during grouping. Applying the final artwork
+transform afterward left native-sized cached bounds despite correct artwork
+mapping; a transformed positional parent also left shifted bounds. New
+regressions first reproduced **3 failures, 17 deselected in 1.32 s** against the
+unchanged production implementation.
+
+After final constructor-time child positions and artwork mapping, CardItem calls
+removeFromGroup(self.card_pixmap_item), immediately followed by
+addToGroup(self.card_pixmap_item), once. These public APIs preserve scene-relative
+artwork geometry while refreshing the cached child union. This intentional
+paired group operation does not add another scene insertion, alter coordinates
+or scaling, or change retained references. No dynamic boundingRect override,
+dummy item, scene redesign or printer/cutter correction is introduced.
+
+Measurements are `(x, y, width, height)`. Actual children and mapped artwork were
+identical before and after:
+
+| Case | Group before | Group after = children | Mapped artwork |
+|---|---|---|---|
+| Regular 4× | (-0.5, -0.5, 2980.5, 4160.5) | (-0.5, -0.5, 746, 1041) | (0, 0, 745, 1040) |
+| Oversized 4× | (-0.5, -0.5, 4160.5, 5960.5) | (-0.5, -0.5, 1041, 1491) | (0, 0, 1040, 1490) |
+| Regular 2×; parent translated (47,23), rotated 11°, scaled 1.3 | (-39.3163866193, -229.165235037, 1430.84110139, 1789.29995745) | (-0.5, -0.5, 746, 1041) | (0, 0, 745, 1040) |
+
+Both sizes have equivalent group bounds across 1×/2×/4×, matching actual children
+within 1e-8. Decorations intentionally extend beyond trim. Existing native-pixel,
+DPR, mapping and parent-transform assertions remain. New scene ownership
+coverage releases caller raster references and performs ordinary GC before
+checking retained items/pixels, with one scene insertion.
+
+Exact commands using the private runtime/wrapper variables above:
+
+```powershell
+$env:PYTHONPATH = $null
+$env:M23_RUN_LABEL = 'group-bounds-before'
+# New regressions on the pre-correction production implementation:
+& $Python -B "$Review\run_isolated.py" pytest tests/page_scene/test_card_raster.py `
+  -k 'construction_group_bounds or dpr_and_positional' -q -s `
+  --basetemp "$Review\pytest-group-bounds-before" --timeout=30
+# After correction:
+$env:M23_RUN_LABEL = 'group-bounds-followup'
+& $Python -B "$Review\run_isolated.py" pytest `
+  tests/page_scene/test_card_raster.py `
+  tests/page_scene/test_page_scene.py::test_card_item_origin_equals_pixmap_origin `
+  tests/page_scene/test_page_scene.py::test_card_bleed_with_single_card `
+  -q -s --basetemp "$Review\pytest-group-bounds-followup" --timeout=30
+$env:M23_RUN_LABEL = 'group-bounds-default-reference'
+& $Python -B "$Review\run_isolated.py" script "$Review\reference_scenes.py" default-final
+$env:M23_RUN_LABEL = 'group-bounds-reference-comparison'
+& $Python -B "$Review\run_isolated.py" script "$Review\compare_references.py"
+```
+
+After correction: **60 passed in 4.00 s**. Both regenerated default scenes match
+retained accepted-base pixels and recorded physical placement exactly. The
+comparison also checks retained high-resolution artifacts; those were not
+regenerated for this follow-up. Matching run-label logs contain measurements and
+isolation proofs. Runtime versions remain as above; no packages changed.
+Unchanged model/persistence, full application, benchmark and hardware suites
+were not rerun.
+
+This fixes construction-time bounds only. The historical limitation after later
+bleed/watermark geometry changes remains outside scope. Earlier offscreen visual
+and typography limitations still apply; no new interactive or hardware claim.

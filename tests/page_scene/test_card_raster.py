@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, QBuffer, QIODevice, QPersistentModelIndex
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
-from PySide6.QtWidgets import QGraphicsRectItem
+from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsScene
 
 from mtg_proxy_printer.model.card import CardCorner, CheckCard, CustomCard
 from mtg_proxy_printer.model.page_layout import PageLayoutSettings
@@ -118,6 +118,8 @@ def test_dpr_and_positional_transformed_parent_do_not_change_local_geometry(docu
     assert item.watermark_item.rotation() == 17
     assert item.watermark_item.pos().x() == pytest.approx(document_light.page_layout.watermark_pos_x.to("pixel", "print").magnitude)
     assert parent.pos() == QPointF(47, 23) and parent.rotation() == 11 and parent.scale() == 1.3
+    print("transformed-parent bounds:", item.boundingRect().getRect(), item.childrenBoundingRect().getRect())
+    assert item.boundingRect().getRect() == pytest.approx(item.childrenBoundingRect().getRect(), abs=1e-8, rel=0)
 
 
 def test_nonuniform_input_still_maps_complete_face_to_trim(document_light):
@@ -309,3 +311,32 @@ def test_scene_alignment_with_test_only_raster_injection(document_light):
     for rect in marks:
         assert before.copy(rect.toAlignedRect()) == after.copy(rect.toAlignedRect())
     assert cards[1].image_file.size() == CardSizes.REGULAR.as_qsize_px()
+
+
+@pytest.mark.parametrize("size", list(CardSizes))
+def test_construction_group_bounds_match_children_at_every_resolution(document_light, size):
+    scene = QGraphicsScene()
+    retained = []
+    measurements = []
+    card = card_with_pattern(size)
+    width, height = size.as_qsize_px().toTuple()
+    for scale in (1, 2, 4):
+        source = patterned(size, scale)
+        expected_pixels = pixels(source)
+        item = item_for(document_light, card, raster=source)
+        scene.addItem(item)  # One ordinary scene insertion; group refresh is internal.
+        retained.append(item)
+        del source
+        gc.collect()
+        assert item.scene() is scene
+        assert item.card_pixmap_item.parentItem() is item
+        assert item.card_pixmap_item.pixmap().size() == QSize(width*scale, height*scale)
+        assert pixels(item.card_pixmap_item.pixmap()) == expected_pixels
+        artwork = item.card_pixmap_item.mapRectToParent(item.card_pixmap_item.boundingRect())
+        assert_rect(artwork, width, height)
+        measurements.append((item.boundingRect().getRect(), item.childrenBoundingRect().getRect()))
+        print(size.name, scale, "group/children/artwork:", *measurements[-1], artwork.getRect())
+    for group, children in measurements:
+        assert group == pytest.approx(children, abs=1e-8, rel=0)
+        assert group == pytest.approx(measurements[0][0], abs=1e-8, rel=0)
+    assert len(scene.items()) >= len(retained)
