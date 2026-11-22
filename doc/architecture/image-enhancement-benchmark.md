@@ -138,7 +138,7 @@ Copy-Item "$Review\results\run-index.json" "$Review\screening-index.json"
 $Finalists = 'original,lanczos,nomos_span_2x,nomos_compact_2x,realesrnet_4x,realesrgan_2x'
 & $Python -B $Harness @Common --models $Finalists
 Copy-Item "$Review\results\run-index.json" "$Review\full-corpus-index.json"
-& $Python -B scripts/enhancement_review.py report --results "$Review\results" --corpus "$Review\corpus\manifest.json" --output "$Review\review-previews" --samples synth_dense,synth_texture_jpeg,synth_alpha,synth_oversized,real_01,real_02,real_05,real_09
+& $Python -B scripts/enhancement_review.py report --results "$Review\results" --index "$Review\full-corpus-index.json" --corpus "$Review\corpus\manifest.json" --output "$Review\review-previews" --samples synth_dense,synth_texture_jpeg,synth_alpha,synth_oversized,real_01,real_02,real_05,real_09
 ~~~
 
 The actual first setup attempt could not import Spandrel because its import path
@@ -274,7 +274,7 @@ physical print quality has been established.
 
 ## Focused validation and evidence integrity
 
-The final standalone unittest suite passes **21 tests**. It covers all four exact
+At the reviewed M22 commit, the standalone unittest suite passed **21 tests**. It covers all four exact
 target rectangles, native/final labeling, per-target sufficient-source skips,
 material recipe changes, source hashing, decode/hash/dimension reuse validation,
 failure accounting, explicit alpha rejection/preservation, Original dimensions,
@@ -326,3 +326,100 @@ Later integration must preserve original bytes, separate raster sample count fro
 the canonical physical rectangle, and keep enhancement optional and external.
 See [image-enhancement.md](image-enhancement.md). Production cache, UI, jobs,
 provider integration and geometry changes are explicitly absent from M22.
+
+
+## Architect-review corrections after the measured benchmark
+
+Correction commit:
+[439155d0d09e3beba3e544e7c2e692eb3c244203](https://github.com/bigntazt/MTGProxyPrinter-Siser/commit/439155d0d09e3beba3e544e7c2e692eb3c244203).
+Reviewed benchmark HEAD: 75aa27644f8992a8bae3fcf947d19533ee25c94d.
+
+Two CPU-only end-to-end fixtures reproduced the following defects against that
+reviewed code:
+
+1. A cached success for actual checkpoint A could be accepted after the manifest
+   was changed to require B while local bytes remained A. The mismatch was
+   detected, but cache lookup happened before the rejection was consulted.
+2. Declared truth digests were not validated and final recipes did not identify
+   truth. Changing the truth image could therefore reuse PSNR/MAE from an older
+   reference, even when the declaration was deliberately updated.
+
+For a target requiring neural processing, checkpoint validation now precedes
+both cached-final acceptance and native-cache/inference access. A rejected pin
+raises a clear error containing the expected and actual hashes; it does not
+overwrite an older valid success with a current failure. Sufficient-source skips
+still take precedence, and a valid pin still resumes normally.
+
+Declared truth must now exist, match its declared SHA-256 and decode through the
+benchmark's image/color policy before any final evaluation is computed or reused.
+The validated truth digest is part of final-result identity and provenance.
+Updating a reference and its declaration creates a distinct evaluation with new
+metrics while leaving the earlier result intact. Truth is deliberately absent
+from native neural identity: an otherwise unchanged native PNG can supply both
+evaluations without another neural inference.
+
+The executed-harness source hash remains in recipe protection. The correction is
+not used to make old source revisions or results appear current. A code edit
+still invalidates reuse across that edit; changing only truth under one unchanged
+corrected harness does not inherently invalidate native output.
+
+### Focused correction validation
+
+Using the existing isolated interpreter, from the M22 worktree:
+
+~~~powershell
+Push-Location benchmarks/enhancement/tests
+& $Python -B -m unittest test_benchmark.ReuseRegressionTests -v
+Pop-Location
+& $Python -B -m unittest discover -s benchmarks/enhancement/tests -p 'test_benchmark.py' -v
+git diff --check
+git diff --cached --check
+git diff --cached --name-only
+~~~
+
+Results: **8 new regressions passed; 29 total standalone tests passed**.
+The two selected defect fixtures failed against the reviewed code as expected
+(checkpoint mismatch was accepted and updated truth reused stale metrics).
+The corrected cases also verify valid-pin resume, sufficient-source skipping,
+unchanged source/truth resume, rejection of missing/corrupt/undeclared-digest
+truth, preservation of previous successes, and native reuse after a truth update.
+Fixtures use tiny CPU images and inert checkpoint bytes, with narrow environment
+mocks and an assertion that inference/GPU configuration is never reached.
+No application tests, dependencies, models, hardware jobs or full corpus runs
+were needed.
+
+### Historical evidence and assessment
+
+The original **206-success / eight-skip / two-OOM** evidence and its executed
+source snapshot remain historical evidence, not results of the corrected code.
+The correction's preservation check found 312 selected historical record,
+manifest, release-evidence and source-snapshot files byte-for-byte unchanged.
+No historical outputs or records were rewritten and no corpus was regenerated.
+
+Existing acquisition records agree with all six preserved manifest pins.
+All 148 primary neural target records and 70 native records also record those
+same checkpoint hashes, so the changed-manifest/local-bytes trigger is absent
+from the recorded evidence. The original completed audit checked all seven
+declared truth digests against the then-preserved files. Those declarations and
+that audit support unchanged truth at the recorded boundaries; no truth-change
+trigger is evidenced.
+
+There is a limit: zero historical final recipes bind a truth digest. The exact
+reference at every individual historical metric/cache access cannot be
+retroactively proven from per-result binding. The corrections do not turn that
+missing provenance into a claim of new validation or a rerun.
+
+The private correction handoff retains exact commands, before/after evidence
+checks and the input-hash assessment. Original timing/quality conclusions retain
+their original limitations.
+
+For any new review generation involving multiple recipe/source revisions, use
+an explicit preserved run index, for example:
+
+~~~powershell
+& $Python -B scripts/enhancement_review.py report --results "$Review\results" --index "$Review\full-corpus-index.json" --corpus "$Review\corpus\manifest.json" --output "$Review\review-previews"
+~~~
+
+Without an index the review script gathers all record revisions in its results
+directory. This is a usage precaution; the report tool was not changed and no
+new mixed-revision gallery was generated for these corrections.
