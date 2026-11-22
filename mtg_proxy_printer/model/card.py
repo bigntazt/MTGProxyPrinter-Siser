@@ -168,9 +168,7 @@ class Card:
         self.corner_color.cache_clear()
 
     def requested_page_type(self) -> PageType:
-        if self.image_file is None:
-            return PageType.OVERSIZED if self.is_oversized else PageType.REGULAR
-        return PageType.OVERSIZED if self.image_file.size() == CardSizes.OVERSIZED.as_qsize_px() else PageType.REGULAR
+        return PageType.OVERSIZED if self.is_oversized else PageType.REGULAR
 
     @functools.lru_cache(maxsize=len(CardCorner))
     def corner_color(self, corner: CardCorner) -> QColor:
@@ -216,7 +214,7 @@ class CustomCard:
     source_image_file: bytes = dataclasses.field(compare=False)
 
     def requested_page_type(self) -> PageType:
-        return PageType.OVERSIZED if self.image_file.size() == CardSizes.OVERSIZED.as_qsize_px() else PageType.REGULAR
+        return PageType.OVERSIZED if self.is_oversized else PageType.REGULAR
 
     @functools.lru_cache(maxsize=len(CardCorner))
     def corner_color(self, corner: CardCorner) -> QColor:

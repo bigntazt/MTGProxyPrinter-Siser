@@ -237,3 +237,87 @@ def test_check_card_oracle_id_is_empty(check_card: CheckCard):
 @pytest.mark.parametrize("property_name", Card.__annotations__)
 def test_check_card_has_all_card_attributes(check_card: CheckCard, property_name: str):
     assert_that(check_card, has_property(property_name))
+
+
+@pytest.mark.parametrize("physical_size", list(CardSizes))
+def test_requested_page_type_uses_metadata_for_every_raster(card, physical_size):
+    card.size = physical_size
+    expected = PageType.OVERSIZED if card.is_oversized else PageType.REGULAR
+    canonical = physical_size.as_qsize_px()
+    opposite = CardSizes.REGULAR if card.is_oversized else CardSizes.OVERSIZED
+    for pixels in (None, canonical, canonical*2, canonical*4, opposite.as_qsize_px()):
+        card.image_file = None if pixels is None else QPixmap(pixels)
+        assert card.requested_page_type() == expected
+
+
+@pytest.mark.parametrize("physical_size", list(CardSizes))
+def test_custom_page_type_does_not_decode_or_follow_cached_pixels(custom_card, physical_size):
+    from dataclasses import replace
+    from unittest.mock import patch
+    custom = replace(custom_card, size=physical_size, source_image_file=b"must not decode")
+    expected = PageType.OVERSIZED if custom.is_oversized else PageType.REGULAR
+    with patch("mtg_proxy_printer.model.card.post_process_image", side_effect=AssertionError("Unexpected decode")):
+        assert "image_file" not in custom.__dict__
+        assert custom.requested_page_type() == expected
+        assert "image_file" not in custom.__dict__
+        canonical = physical_size.as_qsize_px()
+        opposite = CardSizes.REGULAR if custom.is_oversized else CardSizes.OVERSIZED
+        for pixels in (canonical, canonical*2, canonical*4, opposite.as_qsize_px()):
+            custom.__dict__["image_file"] = QPixmap(pixels)
+            assert custom.requested_page_type() == expected
+
+
+def test_check_page_type_delegates_without_composing(check_card):
+    from unittest.mock import PropertyMock, patch
+    with patch.object(CheckCard, "image_file", new_callable=PropertyMock,
+                      side_effect=AssertionError("Classification must not compose")):
+        for physical_size in CardSizes:
+            check_card.front.size = physical_size
+            check_card.front.image_file = None
+            expected = PageType.OVERSIZED if check_card.front.is_oversized else PageType.REGULAR
+            assert check_card.requested_page_type() == expected
+
+
+def test_page_grouping_is_physical_with_high_resolution_and_mismatched_images(card, oversized):
+    from mtg_proxy_printer.model.document_page import Page
+    card.image_file = QPixmap(CardSizes.REGULAR.as_qsize_px()*4)
+    assert Page([card]).page_type() == PageType.REGULAR
+    assert Page([card, oversized]).page_type() == PageType.MIXED
+    card.image_file = QPixmap(CardSizes.OVERSIZED.as_qsize_px())
+    oversized.image_file = None
+    assert Page([card]).page_type() == PageType.REGULAR
+    assert Page([card, oversized]).page_type() == PageType.MIXED
+
+
+def test_offline_save_load_keeps_canonical_page_sizes_and_custom_source_bytes(custom_card, card_db, mock_imagedb):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from mtg_proxy_printer.model.document_page import Page
+    from mtg_proxy_printer.sqlite_helpers import open_database
+    from mtg_proxy_printer.document_controller.save_document import ActionSaveDocument
+    from mtg_proxy_printer.async_tasks.document_loader import CardRow, CardType, DocumentLoader
+
+    cards = []
+    for physical_size, color in ((CardSizes.REGULAR, QColorConstants.Blue),
+                                  (CardSizes.OVERSIZED, QColorConstants.Yellow)):
+        raster = QPixmap(physical_size.as_qsize_px()*2)
+        raster.fill(color)
+        buffer = QBuffer()
+        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+        assert raster.save(buffer, "PNG")
+        cards.append(replace(custom_card, size=physical_size, source_image_file=buffer.data().data()))
+    document = SimpleNamespace(pages=[Page([card]) for card in cards], image_db=mock_imagedb)
+    # Only save/load helpers are exercised, never the loader's network worker.
+    with open_database(":memory:", "document-v7") as database:
+        ActionSaveDocument._save_pages(database, document)
+        ActionSaveDocument._save_cards(database, document)
+        assert database.execute("SELECT image_size FROM Page ORDER BY page").fetchall() == [
+            ("745x1040",), ("1040x1490",)]
+        loader = SimpleNamespace(card_db=card_db)
+        for card in cards:
+            row = CardRow(True, CardType.REGULAR, None, card.scryfall_id)
+            loaded = DocumentLoader._load_custom_card_from_save(loader, database, card.size, row)
+            assert loaded.size == card.size
+            assert loaded.source_image_file == card.source_image_file
+            assert "image_file" not in loaded.__dict__
+            assert loaded.requested_page_type() == card.requested_page_type()
