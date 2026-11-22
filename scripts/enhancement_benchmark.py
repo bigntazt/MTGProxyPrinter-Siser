@@ -82,6 +82,29 @@ def read_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
+def validated_truth(sample, corpus_directory):
+    """Validate the declared evaluation reference before any final-result reuse."""
+    if not sample.get("truth_file"):
+        if sample.get("truth_sha256"):
+            raise ValueError(f"Missing declared truth image for {sample['id']}")
+        return None, None
+    expected = sample.get("truth_sha256")
+    if not isinstance(expected, str) or len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected.lower()):
+        raise ValueError(f"Missing or invalid declared truth SHA-256 for {sample['id']}")
+    truth = (corpus_directory / sample["truth_file"]).resolve()
+    if not truth.is_file():
+        raise ValueError(f"Missing declared truth image for {sample['id']}: {truth.name}")
+    actual = sha256(truth)
+    if actual != expected.lower():
+        raise ValueError(f"Truth hash mismatch for {sample['id']}: expected {expected.lower()}, got {actual}")
+    try:
+        decoded, _ = load_image(truth)
+        decoded.close()
+    except (OSError, ValueError, SyntaxError) as error:
+        raise ValueError(f"Invalid declared truth image for {sample['id']}: {error}") from error
+    return truth, actual
+
+
 def write_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -339,7 +362,8 @@ def run(args):
             else:
                 checkpoint_hash = sha256(checkpoint)
                 if checkpoint_hash != model["sha256"]:
-                    load_error = "Checkpoint hash does not match manifest"
+                    load_error = (f"Checkpoint hash mismatch for {model['filename']}: "
+                                  f"expected {model['sha256']}, got {checkpoint_hash}")
         first_after_load = True
         with gpu_lock(args.models_dir) if neural else contextlib.nullcontext():
             for sample in samples:
@@ -348,9 +372,10 @@ def run(args):
                 if actual_hash != sample["sha256"]:
                     raise ValueError(f"Source hash mismatch: {sample['id']}")
                 image, image_info = load_image(source)
-                truth = (corpus_path.parent / sample["truth_file"]).resolve() if sample.get("truth_file") else None
+                truth, truth_hash = validated_truth(sample, corpus_path.parent)
                 common = {"sample_id": sample["id"], "face": sample["face"],
                           "card_type": sample["card_type"], "source_sha256": actual_hash,
+                          "truth_sha256": truth_hash,
                           **image_info}
                 native_recipe = {"schema": SCHEMA, "source_sha256": actual_hash,
                                  "checkpoint_sha256": checkpoint_hash, "model": candidate,
@@ -364,6 +389,7 @@ def run(args):
                 for ppi in args.targets:
                     size = target_size(sample["card_type"], ppi)
                     recipe = {**native_recipe, "card_type": sample["card_type"], "target_ppi": ppi,
+                              "truth_sha256": truth_hash,
                               "target_dimensions": list(size), "mapping": "full face; Lanczos after inference",
                               "control": candidate if not neural else None}
                     common_target = {**common, "target_ppi": ppi, "target_dimensions": list(size),
@@ -372,14 +398,15 @@ def run(args):
                                      "native_scale": None, "native_output_dimensions": None,
                                      "load_seconds": load_seconds, "capabilities": capabilities}
                     final_path = out / "records" / (identity(recipe) + ".json")
-                    cached_final = reusable(final_path, recipe)
+                    decision = ai_decision(image.size, size, image_info["nonopaque_alpha"], args.alpha_policy == "resize") if neural else None
+                    if neural and not decision and load_error:
+                        # Reject this request without overwriting an older valid success.
+                        raise ValueError(f"{candidate}: {load_error}")
+                    cached_final = reusable(final_path, recipe) if decision is None else None
                     if cached_final:
                         run_index.append({"record": str(final_path), "reused": True})
                         print(f"REUSED {candidate} {sample['id']} {ppi}", flush=True)
                         continue
-                    decision = ai_decision(image.size, size, image_info["nonopaque_alpha"], args.alpha_policy == "resize") if neural else None
-                    if neural and not decision and load_error:
-                        decision = ("failure", load_error)
                     if decision:
                         write_json(final_path, {**common_target, "recipe": recipe, "recipe_id": identity(recipe),
                                                 "method": candidate, "status": decision[0], "reason": decision[1]})
