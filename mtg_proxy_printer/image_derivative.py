@@ -196,18 +196,15 @@ class DerivativeRequest:
         return _load_json(self.canonical_bytes)
 
 
-def build_derivative_request(snapshot: SourceSnapshot, plan: ResolutionPlan,
-                             recipe: ProcessingRecipe) -> DerivativeRequest:
+def validate_source_plan(snapshot: SourceSnapshot, plan: ResolutionPlan) -> None:
     if not isinstance(snapshot, SourceSnapshot) or not isinstance(plan, ResolutionPlan):
         raise TypeError("Expected an M24 source snapshot and resolution plan")
-    if not isinstance(recipe, ProcessingRecipe):
-        raise TypeError("Expected a frozen ProcessingRecipe")
     if type(snapshot.encoded_bytes) is not bytes:
         raise TypeError("Source payload must be immutable bytes")
     _digest(snapshot.sha256)
     if hashlib.sha256(snapshot.encoded_bytes).hexdigest() != snapshot.sha256:
         raise ValueError("Source digest does not match its encoded bytes")
-    key = _key_spec(snapshot.image_key)
+    _key_spec(snapshot.image_key)
     _dimensions(snapshot.native_dimensions)
     _dimensions(snapshot.canonical_dimensions)
     for value in (snapshot.image_format, snapshot.decode_policy, snapshot.qt_decoder_version):
@@ -225,6 +222,14 @@ def build_derivative_request(snapshot: SourceSnapshot, plan: ResolutionPlan,
         raise ValueError("Invalid effective source PPI")
     if plan != plan_target_resolution(snapshot, plan.target_ppi):
         raise ValueError("Resolution plan does not match the source snapshot")
+
+
+def build_derivative_request(snapshot: SourceSnapshot, plan: ResolutionPlan,
+                             recipe: ProcessingRecipe) -> DerivativeRequest:
+    validate_source_plan(snapshot, plan)
+    if not isinstance(recipe, ProcessingRecipe):
+        raise TypeError("Expected a frozen ProcessingRecipe")
+    key = _key_spec(snapshot.image_key)
     spec = {
         "schema_version": 1,
         "source": {"image_key": key, "sha256": snapshot.sha256,

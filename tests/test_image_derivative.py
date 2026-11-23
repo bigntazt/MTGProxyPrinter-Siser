@@ -226,3 +226,15 @@ def test_serialization_contract():
     assert request.key == "e817a0b7d4c3225d533726714604db6a1af679f57301302c64028be48746d089"
     assert "sufficient" not in request.to_spec()["geometry"]
     assert "effective_source_ppi" not in request.to_spec()["geometry"]
+
+
+def test_shared_source_plan_validator_without_a_processing_recipe():
+    from mtg_proxy_printer.image_derivative import validate_source_plan
+    source = make_snapshot()
+    plan = plan_target_resolution(source, 600)
+    with patch.object(ProcessingRecipe, "from_spec", side_effect=AssertionError("No fake Original recipe")):
+        assert validate_source_plan(source, plan) is None
+        with pytest.raises(ValueError, match="digest"):
+            validate_source_plan(replace(source, sha256="0"*64), plan)
+        with pytest.raises(ValueError, match="Resolution plan"):
+            validate_source_plan(source, replace(plan, target_dimensions=(1490, 2079)))
