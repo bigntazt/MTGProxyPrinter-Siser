@@ -3,20 +3,22 @@
 M29 adds an optional GUI-thread `PreparedPageSession` over M24–M28. An explicit
 caller can capture the selected page, run the existing background controller,
 decode accepted results and publish them together to a PageScene resolver.
-No normal application, live renderer or output caller constructs this session.
-There are no new controls, persisted settings, dependencies, processing recipes,
-custom masks, composite rendering, neural providers or physical-layout changes.
+M30 adopts it only in the normal main-page preview; see
+[Main-page image preparation preview](prepared-image-preview.md). Output callers
+remain unchanged. There are no persisted settings, new dependencies, processing
+recipes, custom masks, composite rendering, neural providers or geometry changes.
 
 ## API and explicit ownership
 
 ```python
 session = PreparedPageSession(document, submit_task, source_cache_root,
-                              derivative_cache, parent=None)
+                              derivative_cache, parent=None, *, max_raster_bytes=None)
 session.enable(mode="lanczos", target_ppi=600)
 session.refresh()
 session.disable()
 session.close()
 prepared = session.resolve(image_index)
+status = session.status()
 ```
 
 Construction requires an existing GUI application and its GUI thread, as do all
@@ -177,15 +179,48 @@ Presentation retention is scoped to the selected page and the single draining/
 staging batch. Duplicates share a value. This is not a fixed RAM guarantee: custom
 paper can contain many cards, Original/fallback can exceed targets, scenes retain
 Qt copies until refresh/disposal, and processing/decoding require working memory.
-A hard memory/readiness policy remains for normal adoption. No silent downsampling
-or maximum-native-size interpretation of 1200 PPI is introduced.
+M30 adds an optional retained-payload budget and current-generation status interface
+described below. No silent downsampling or maximum-native-size interpretation of
+1200 PPI is introduced.
 
 M29 does not implement custom forced-corner masks, CheckCard high-resolution
 composition, normal PageRenderer/live application or PDF/PNG/native-print adoption,
 persisted controls, neural providers, cache retention or later milestones. The
 accepted M28 native raster mapping and all physical layout/decorations stay unchanged.
 
-## Focused evidence
+## M30 status and retained-payload policy
+
+status() is GUI-thread-only and returns frozen SessionStatus metadata: generation,
+enabled, a phase derived from existing scheduling/publication state, optional
+progress/completion, and a diagnostics tuple. Invalidation and close clear metadata.
+Updates precede public notifications; a reentrant owner must read current status
+instead of displaying the triggering payload. No pixels, indexes or models appear
+in the snapshot, and no second scheduler is maintained.
+
+SessionCompletion adds default-compatible total_page_occurrences and immutable
+outcome_counts. Published bindings count occurrences including aliases, classified
+as original, cache_hit, generated_cached, generated_uncached or fallback_original.
+Eligible unpublished occurrences count as standard; other page entries count as
+skipped. Deferred fallback/uncached diagnostics retain reason/detail and alias IDs.
+Publication completion is applying until queued rasters_changed; the owner must
+refresh the scene before displaying ready. Ready does not imply Lanczos success.
+
+max_raster_bytes accepts None (unlimited) or a nonnegative integer, excluding bool.
+Zero retains no prepared rasters. Each unique retained successful result is charged
+once. Positive integer actual dimensions and target metadata are validated before
+a four-byte-per-pixel estimate can reject decoding. After decoding, native size and
+at least four bytes per pixel (greater depth and aligned rows allowed) determine
+the charge, without a deep copy/toImage. Either over-budget path retains an
+addressable preview_memory_limit failure sentinel, not a raster; aliases remain
+consistent and incur no extra charge. Accepted results still publish atomically.
+Accounting follows batch lifetime, including the accepted terminal/draining close
+distinction. Source processing and Qt scene copies remain outside this payload
+budget. MainWindow opts into 512 MiB; existing callers default to unlimited.
+
+M30 policy and adoption evidence is recorded in prepared-image-preview.md. The
+following evidence describes the original M29 milestone and remains historical.
+
+## M29 focused evidence
 
 The two new test modules plus the five explicitly required M27/M28 boundary guards
 passed **47 cases in 3.61 seconds** in the isolated review runtime. Real M24–M29

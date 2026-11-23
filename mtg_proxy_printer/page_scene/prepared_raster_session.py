@@ -1,11 +1,12 @@
-"""Optional GUI-thread current-page sessions; no normal application/export adoption."""
-from dataclasses import dataclass, field
+"""GUI-thread current-page preparation sessions with optional retained-raster limits."""
+from collections import Counter
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QModelIndex, QPersistentModelIndex, QTimer, Qt, Signal, Slot
 
 from mtg_proxy_printer.async_tasks.image_preparation import (
-    BatchEntry, BatchSummary, ImagePreparationController, PreparedResult, ResultAlias, UnavailableResult,
+    BatchEntry, BatchProgress, BatchSummary, ImagePreparationController, PreparedResult, ResultAlias, UnavailableResult,
 )
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
 from mtg_proxy_printer.image_source import SourceRequest, capture_source_request
@@ -23,6 +24,8 @@ class SessionCompletion:
     generation: int
     summary: BatchSummary  # Real submitted batch's accepted counts, not publication counts.
     published_occurrences: int
+    total_page_occurrences: int = 0
+    outcome_counts: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -32,6 +35,16 @@ class SessionDiagnostic:
     detail: str
     occurrence_ids: tuple[int, ...] = ()
     batch_id: int | None = None
+
+
+@dataclass(frozen=True)
+class SessionStatus:
+    generation: int
+    enabled: bool
+    phase: str
+    progress: BatchProgress | None = None
+    completion: SessionCompletion | None = None
+    diagnostics: tuple[SessionDiagnostic, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -65,6 +78,7 @@ class _Batch:
     assignments: dict[int, int | None] = field(default_factory=dict)
     diagnostics: list[SessionDiagnostic] = field(default_factory=list)
     terminal: BatchSummary | None = None
+    raster_bytes: int = 0  # Charged once per retained successful result, never per alias.
 
 
 @dataclass(frozen=True)
@@ -105,8 +119,14 @@ class PreparedPageSession(QObject):
     completed = Signal(object)  # SessionCompletion, current submitted batch only.
     diagnostic = Signal(object)  # SessionDiagnostic, metadata only.
 
-    def __init__(self, document, submit_task, source_cache_root, derivative_cache, parent=None):
+    def __init__(self, document, submit_task, source_cache_root, derivative_cache, parent=None,
+                 *, max_raster_bytes=None):
         require_gui_thread()
+        if max_raster_bytes is not None:
+            if type(max_raster_bytes) is not int:
+                raise TypeError("Raster budget must be a nonnegative integer or None")
+            if max_raster_bytes < 0:
+                raise ValueError("Raster budget must be nonnegative")
         super().__init__(parent)
         if document.thread() != self.thread():
             raise RuntimeError("The document and preparation session must belong to the GUI thread")
@@ -115,9 +135,12 @@ class PreparedPageSession(QObject):
         # Freeze relative-root interpretation without reading, stat or cache discovery.
         self._source_root = Path(source_cache_root).absolute()
         self._cache = DerivativeCache(Path(derivative_cache.root))
+        self._max_raster_bytes = max_raster_bytes
         self._document = document
         self._closing = self._enabled = False
         self._generation = 0
+        self._status_progress = self._status_completion = None
+        self._status_diagnostics = ()
         self._options: tuple[str, int] | None = None
         self._pending: _Request | None = None
         self._storage = _Storage()
@@ -150,6 +173,38 @@ class PreparedPageSession(QObject):
     @property
     def _closed(self):
         return self._closing or not self._storage.alive
+
+    def status(self) -> SessionStatus:
+        """Current-generation metadata only. The owner refreshes its scene before showing ready."""
+        self._assert_gui()
+        if self._closed:
+            phase = "closed"
+        elif not self._enabled:
+            phase = "off"
+        elif self._pending is not None:
+            phase = "queued"
+        elif self._storage.active is not None:
+            phase = "preparing"
+        elif self._storage.published is not None:
+            phase = "applying" if self._refresh_needed else "ready"
+        elif self._status_completion is not None:
+            phase = self._status_completion.summary.status
+        elif any(d.reason == "scheduling_failed" for d in self._status_diagnostics):
+            phase = "failed"
+        elif any(d.reason == "idle_no_eligible_sources" for d in self._status_diagnostics):
+            phase = "no_eligible_sources"
+        else:
+            phase = "queued"
+        return SessionStatus(self._generation, self._enabled, phase, self._status_progress,
+                             self._status_completion, self._status_diagnostics)
+
+    def _clear_status(self):
+        self._status_progress = self._status_completion = None
+        self._status_diagnostics = ()
+
+    def _notify_diagnostic(self, diagnostic):
+        self._status_diagnostics += (diagnostic,)
+        self.diagnostic.emit(diagnostic)
 
     def enable(self, *, mode, target_ppi):
         self._assert_gui()
@@ -187,6 +242,7 @@ class PreparedPageSession(QObject):
         self._closing = True  # Permanent teardown before any callback/cancellation.
         self._enabled = False
         self._generation += 1
+        self._clear_status()
         self._pending = self._storage.published = None
         if self._storage.active is not None and self._storage.active.terminal is not None:
             # Terminal already arrived; stopping reconciliation removes its remaining cleanup path.
@@ -213,6 +269,7 @@ class PreparedPageSession(QObject):
 
     def _invalidate(self):
         self._generation += 1
+        self._clear_status()
         self._storage.published = None
         self._pending = _Request(self._generation, *self._options) if self._enabled else None
         self._controller.cancel()
@@ -311,11 +368,14 @@ class PreparedPageSession(QObject):
             if ((prepared.source_identity.image_key, prepared.canonical_dimensions) not in keys
                     or prepared.target_ppi != batch.request.target_ppi):
                 raise ValueError("Prepared result does not match the captured request")
-            value = decode_prepared_pixmap(prepared)
+            value = self._decode_with_budget(prepared, batch)
             batch.results[event.result_id] = value
             batch.result_keys[event.result_id] = next(iter(keys))
             if isinstance(value, RasterDecodeFailure):
                 batch.diagnostics.append(SessionDiagnostic(self._generation, value.reason, value.detail, ids, batch_id))
+            elif value.outcome in ("fallback_original", "generated_uncached"):
+                batch.diagnostics.append(SessionDiagnostic(
+                    self._generation, value.reason or value.outcome, value.detail, ids, batch_id))
         elif isinstance(event, ResultAlias):
             if event.result_id not in batch.results:
                 raise ValueError("Alias references an unknown preparation result")
@@ -329,10 +389,43 @@ class PreparedPageSession(QObject):
         for i in ids:
             batch.assignments[i] = None if isinstance(event, UnavailableResult) else event.result_id
 
+    def _decode_with_budget(self, prepared, batch):
+        dimensions = prepared.actual_dimensions
+        if (not isinstance(dimensions, (tuple, list)) or len(dimensions) != 2
+                or any(type(axis) is not int or axis <= 0 for axis in dimensions)):
+            return RasterDecodeFailure("invalid_metadata", "Actual dimensions must be two positive integers")
+        target = prepared.target_dimensions
+        if (not isinstance(target, (tuple, list)) or len(target) != 2
+                or any(type(axis) is not int or axis <= 0 for axis in target)
+                or tuple(target) != tuple(axis*(prepared.target_ppi//300) for axis in prepared.canonical_dimensions)):
+            return RasterDecodeFailure("invalid_metadata", "Target dimensions must agree with the captured target")
+        remaining = None if self._max_raster_bytes is None else self._max_raster_bytes - batch.raster_bytes
+        estimate = dimensions[0]*dimensions[1]*4
+        if remaining is not None and estimate > remaining:
+            return RasterDecodeFailure("preview_memory_limit",
+                                       f"Prepared preview needs at least {estimate} bytes; {remaining} bytes remain. "
+                                       "This result will use standard rendering.")
+        value = decode_prepared_pixmap(prepared)
+        if isinstance(value, RasterDecodeFailure):
+            return value
+        if not isinstance(value, PreparedPixmap):
+            raise TypeError("Prepared decoder must return a presentation value or decode failure")
+        # No deep copy/toImage: use native dimensions and a conservative scanline charge.
+        width, height = value.pixmap.width(), value.pixmap.height()
+        pixel_bytes = max(4, (value.pixmap.depth()+7)//8)
+        charge = ((width*pixel_bytes+3)//4)*4*height
+        if remaining is not None and charge > remaining:
+            return RasterDecodeFailure("preview_memory_limit",
+                                       f"Decoded preview needs {charge} bytes; {remaining} bytes remain. "
+                                       "This result will use standard rendering.")
+        batch.raster_bytes += charge
+        return value
+
     @Slot(object)
     def _on_progress(self, progress):
         batch = self._storage.active
         if batch is not None and batch.batch_id == progress.batch_id and self._current(batch):
+            self._status_progress = progress
             self.progress.emit(progress)  # No work follows a potentially reentrant notification.
 
     @Slot(object)
@@ -368,8 +461,16 @@ class PreparedPageSession(QObject):
 
     def _finalize(self, batch):
         summary = batch.terminal
-        diagnostics = tuple(batch.diagnostics)
+        # Include alias occurrences when preserving each result's deferred reason/detail.
+        aliases = {}
+        for occurrence_id, result_id in batch.assignments.items():
+            if result_id is not None:
+                aliases.setdefault(result_id, []).append(occurrence_id)
+        diagnostics = tuple(replace(d, occurrence_ids=tuple(aliases[batch.assignments[d.occurrence_ids[0]]]))
+                            if d.occurrence_ids and batch.assignments.get(d.occurrence_ids[0]) is not None else d
+                            for d in batch.diagnostics)
         published_count = 0
+        counts = Counter()
         if summary.status == "completed" and self._current(batch):
             if len(batch.assignments) != len(batch.occurrences):
                 raise RuntimeError("Completed batch has unresolved staged occurrences")
@@ -379,10 +480,15 @@ class PreparedPageSession(QObject):
                              and isinstance(batch.results[batch.assignments[occurrence.occurrence_id]], PreparedPixmap))
             self._storage.published = _Publication(self._generation, batch.page, batch.page_card_count, bindings)
             published_count = len(bindings)
+            counts.update(value.outcome for _, value in bindings)
             self._refresh_needed = True
             self._queue()
         self._storage.active = None
-        return SessionCompletion(batch.request.generation, summary, published_count), diagnostics
+        counts["standard"] = len(batch.occurrences) - published_count
+        counts["skipped"] = batch.page_card_count - len(batch.occurrences)
+        completion = SessionCompletion(batch.request.generation, summary, published_count,
+                                       batch.page_card_count, tuple(sorted((key, count) for key, count in counts.items() if count)))
+        return completion, diagnostics
 
     @Slot()
     def _reconcile(self):
@@ -406,9 +512,10 @@ class PreparedPageSession(QObject):
                     self._storage.active = None
                 else:
                     completion, diagnostics = self._finalize(batch)
+                    self._status_completion = completion
                     batch = None  # Release obsolete staging before public metadata callbacks.
                     for diagnostic in diagnostics:
-                        self.diagnostic.emit(diagnostic)
+                        self._notify_diagnostic(diagnostic)
                         if self._closed or generation != self._generation or self._mutation_depth:
                             return
                     self.completed.emit(completion)
@@ -419,8 +526,8 @@ class PreparedPageSession(QObject):
             request, self._pending = self._pending, None  # Consume once; errors/terminal do not retry.
             batch = self._capture(request)
             if batch is None or not batch.occurrences:
-                self.diagnostic.emit(SessionDiagnostic(generation, "idle_no_eligible_sources",
-                                                      "No current eligible ordinary-card sources"))
+                self._notify_diagnostic(SessionDiagnostic(generation, "idle_no_eligible_sources",
+                                                         "No current eligible ordinary-card sources"))
                 return
             self._storage.active = batch
             try:
@@ -430,7 +537,7 @@ class PreparedPageSession(QObject):
             except RuntimeError as error:
                 self._storage.active = None
                 if not self._closed and generation == self._generation:
-                    self.diagnostic.emit(SessionDiagnostic(generation, "scheduling_failed", str(error)))
+                    self._notify_diagnostic(SessionDiagnostic(generation, "scheduling_failed", str(error)))
         finally:
             self._reconciling = False
             if self._again:
