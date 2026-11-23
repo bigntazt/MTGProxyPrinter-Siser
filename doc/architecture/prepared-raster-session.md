@@ -155,8 +155,11 @@ Existing items otherwise retain their Qt pixmap value copies.
 
 close marks permanent closure first, discards pending/publication, stops the timer,
 disconnects model observations, releases the document reference and closes/cancels
-the controller without waiting. Active staging releases at terminal cleanup or
-native destruction. Later model access, publication and refresh notifications are
+the controller without waiting. A stage whose terminal summary has already arrived
+is released immediately during close, including after document destruction: the
+stopped reconciliation timer cannot supply later cleanup. Genuinely active/draining
+staging retains accepted result-ID representations until terminal cleanup or native
+destruction. Later model access, publication and refresh notifications are
 suppressed, including after document destruction. Native child-controller destruction
 uses the accepted M27 cancellation wakeup. No thread termination, global cancellation
 or accepted runner/shutdown change is made. As in M27, a queued runnable discarded

@@ -340,3 +340,61 @@ def test_progress_handler_can_disable_without_late_publication(harness):
     controller.finish("cancelled")
     settle()
     assert all(session.resolve(i) is None for i in indices) and len(controller.starts) == 1
+
+
+@pytest.mark.parametrize("ending", ["close", "document"])
+@pytest.mark.parametrize("status", ["completed", "cancelled", "failed"])
+def test_close_releases_terminal_stage_before_reconciliation(harness, ending, status):
+    document, session, controller, indices = harness
+    begin(session)
+    controller.deliver(PreparedResult(1, (0, 1, 2), result(controller)))
+    staged = weakref.ref(session._storage.active.results[1])
+    batch = weakref.ref(session._storage.active)
+    refreshes, completions, diagnostics = [], [], []
+    session.rasters_changed.connect(lambda: refreshes.append(1))
+    session.completed.connect(completions.append)
+    session.diagnostic.connect(diagnostics.append)
+    controller.finish(status)  # No event settling: terminal received, publication still queued.
+    assert not controller.is_busy
+    assert session._storage.active.terminal.status == status
+    assert session._timer.isActive() and session._storage.published is None
+    assert staged() is not None and batch() is not None
+    if ending == "document":
+        shiboken6.delete(document)
+    else:
+        session.close()
+    assert shiboken6.isValid(session) and session._closed
+    gc.collect()
+    assert session._storage.active is None
+    assert staged() is None and batch() is None
+    settle()
+    assert not refreshes and not completions and not diagnostics
+    assert session._storage.published is None and session._pending is None
+    assert not session._timer.isActive() and len(controller.starts) == 1
+
+
+def test_close_preserves_draining_stage_until_terminal_cleanup(harness):
+    document, session, controller, indices = harness
+    begin(session)
+    controller.deliver(PreparedResult(1, (0, 1, 2), result(controller)))
+    staged = weakref.ref(session._storage.active.results[1])
+    batch = weakref.ref(session._storage.active)
+    refreshes, completions, diagnostics = [], [], []
+    session.rasters_changed.connect(lambda: refreshes.append(1))
+    session.completed.connect(completions.append)
+    session.diagnostic.connect(diagnostics.append)
+    assert controller.is_busy and session._storage.active.terminal is None
+    session.close()
+    gc.collect()
+    assert controller.is_busy and controller.cancelled
+    assert staged() is not None and batch() is not None
+    assert session._storage.active.results[1] is staged()
+    assert session.resolve(indices[0]) is None
+    settle()
+    assert staged() is not None  # Waiting/cancellation is not terminal cleanup.
+    controller.finish("cancelled")
+    gc.collect()
+    assert session._storage.active is None and staged() is None and batch() is None
+    settle()
+    assert not refreshes and not completions and not diagnostics
+    assert session._storage.published is None and len(controller.starts) == 1

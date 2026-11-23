@@ -188,6 +188,9 @@ class PreparedPageSession(QObject):
         self._enabled = False
         self._generation += 1
         self._pending = self._storage.published = None
+        if self._storage.active is not None and self._storage.active.terminal is not None:
+            # Terminal already arrived; stopping reconciliation removes its remaining cleanup path.
+            self._storage.active = None
         self._refresh_needed = self._again = False
         self._timer.stop()
         for connection in self._observations:
