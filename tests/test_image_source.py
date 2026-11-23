@@ -276,7 +276,7 @@ def test_both_axes_control_sufficiency_and_target_is_always_exact(dimensions, su
 
 @pytest.mark.parametrize("target", [300, 601, 2400, 600.0, True, "600", None])
 def test_target_must_be_explicit_supported_integer(target):
-    with pytest.raises(ValueError, match="integer 600 or 1200"):
+    with pytest.raises(ValueError, match="integer 600, 900 or 1200"):
         plan_target_resolution(snapshot(), target)
 
 
