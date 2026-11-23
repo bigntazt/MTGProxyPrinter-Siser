@@ -44,6 +44,13 @@
      <addaction name="separator"/>
      <addaction name="action_export_card_images"/>
     </widget>
+    <widget class="QMenu" name="menu_export_prepared_png">
+     <property name="title"><string>Export prepared current page as PNG</string></property>
+     <property name="enabled"><bool>false</bool></property>
+     <addaction name="action_export_prepared_png_600"/>
+     <addaction name="action_export_prepared_png_900"/>
+     <addaction name="action_export_prepared_png_1200"/>
+    </widget>
     <addaction name="action_new_document"/>
     <addaction name="action_load_document"/>
     <addaction name="action_save_document"/>
@@ -52,6 +59,7 @@
     <addaction name="action_print_preview"/>
     <addaction name="action_print"/>
     <addaction name="action_export_prepared_page_pdf"/>
+    <addaction name="menu_export_prepared_png"/>
     <addaction name="menu_export"/>
     <addaction name="separator"/>
     <addaction name="action_import_deck_list"/>
@@ -132,6 +140,21 @@
    <addaction name="action_new_page"/>
    <addaction name="action_discard_page"/>
   </widget>
+  <action name="action_export_prepared_png_600">
+   <property name="enabled"><bool>false</bool></property>
+   <property name="text"><string>600 PPI</string></property>
+   <property name="toolTip"><string>Export the Ready prepared page on a white PNG canvas at 600 PPI, independently of source preparation.</string></property>
+  </action>
+  <action name="action_export_prepared_png_900">
+   <property name="enabled"><bool>false</bool></property>
+   <property name="text"><string>900 PPI</string></property>
+   <property name="toolTip"><string>Export the Ready prepared page on a white PNG canvas at 900 PPI, independently of source preparation.</string></property>
+  </action>
+  <action name="action_export_prepared_png_1200">
+   <property name="enabled"><bool>false</bool></property>
+   <property name="text"><string>1200 PPI</string></property>
+   <property name="toolTip"><string>Export the Ready prepared page on a white PNG canvas at 1200 PPI, independently of source preparation.</string></property>
+  </action>
   <action name="action_export_prepared_page_pdf">
    <property name="enabled"><bool>false</bool></property>
    <property name="text"><string>Export prepared current page as PDF…</string></property>

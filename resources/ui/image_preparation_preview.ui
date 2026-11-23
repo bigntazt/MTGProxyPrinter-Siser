@@ -5,7 +5,7 @@
   <property name="windowTitle"><string>Image Preparation Preview</string></property>
   <widget class="QWidget" name="dock_contents">
    <layout class="QVBoxLayout" name="verticalLayout">
-    <item><widget class="QLabel" name="scope_label"><property name="text"><string>Prepared images are used here and by Export prepared current page as PDF. The regular Print, PDF and PNG commands use the existing images.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+    <item><widget class="QLabel" name="scope_label"><property name="text"><string>Prepared images are used here and by the prepared current-page PDF and PNG commands. The regular Print, PDF and PNG commands use the existing images.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
     <item><widget class="QLabel" name="supported_cards_label"><property name="text"><string>Ordinary card faces only. Custom cards and composed CheckCards retain their existing preview.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
     <item><widget class="QComboBox" name="mode_combo"><property name="accessibleName"><string>Preparation mode</string></property>
       <item><property name="text"><string>Off — standard preview</string></property></item>

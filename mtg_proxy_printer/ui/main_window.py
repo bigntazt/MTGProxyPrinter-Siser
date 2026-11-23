@@ -56,6 +56,9 @@ from mtg_proxy_printer.ui.siser_guide_dialog import SiserGuideDialog
 from mtg_proxy_printer.ui.image_preparation_preview import ImagePreparationPreview
 from mtg_proxy_printer.ui.prepared_page_pdf_dialog import PreparedPagePDFDialog
 from mtg_proxy_printer.prepared_page_pdf import capture_prepared_page_pdf, require_ready_status
+from mtg_proxy_printer.prepared_page_png import capture_prepared_page_png
+from mtg_proxy_printer.ui.prepared_page_png_dialog import PreparedPagePNGDialog
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI
 from mtg_proxy_printer.page_scene.prepared_raster_session import PreparedPageSession
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
 
@@ -105,6 +108,7 @@ class MainWindow(QMainWindow):
         self.progress_bar_manager = self._create_progress_bar_manager()
         self.image_db = image_db
         self.document = document
+        self._setup_prepared_png_actions()
         self._setup_image_preparation_preview()
         self._connect_document_signals(document)
         self._setup_web_action_signals(ui)
@@ -137,7 +141,37 @@ class MainWindow(QMainWindow):
             return False
 
     def _update_prepared_pdf_action(self):
-        self.ui.action_export_prepared_page_pdf.setEnabled(self._prepared_pdf_available())
+        available = self._prepared_pdf_available()
+        self.ui.action_export_prepared_page_pdf.setEnabled(available)
+        self.ui.menu_export_prepared_png.menuAction().setEnabled(available)
+        for action in self._prepared_png_actions:
+            action.setEnabled(available)
+
+    def _setup_prepared_png_actions(self):
+        self._prepared_png_actions = tuple(
+            getattr(self.ui, f"action_export_prepared_png_{ppi}") for ppi in SUPPORTED_TARGET_PPI)
+        for action, ppi in zip(self._prepared_png_actions, SUPPORTED_TARGET_PPI):
+            action.setData(ppi)
+            action.triggered.connect(lambda checked=False, action=action: self._export_prepared_page_png(action.data()))
+
+    def _export_prepared_page_png(self, output_ppi):
+        if not self._prepared_pdf_available() or not self._artwork_output_allowed():
+            return
+        try:
+            dock = self.image_preparation_preview
+            result = capture_prepared_page_png(
+                self.document, self.preview_session, mode=dock.mode, target_ppi=dock.target_ppi,
+                output_ppi=output_ppi,
+                landscape_workaround=mtg_proxy_printer.settings.settings["export"].getboolean(
+                    "landscape-compatibility-workaround"))
+        except (ValueError, RuntimeError, MemoryError) as error:
+            self.on_error_occurred(str(error) or self.tr(
+                "Not enough memory for this PNG page. Choose a lower PNG resolution or prepared PDF."))
+            return
+        self.current_dialog = dialog = PreparedPagePNGDialog(result, self)
+        dialog.request_run_async_task.connect(self.request_run_async_task)
+        dialog.finished.connect(self.on_dialog_finished)
+        dialog.open()
 
     @Slot()
     def on_action_export_prepared_page_pdf_triggered(self):
@@ -348,6 +382,8 @@ class MainWindow(QMainWindow):
             ui.action_print,
             ui.action_print_pdf,
             ui.action_export_prepared_page_pdf,
+            ui.menu_export_prepared_png.menuAction(),
+            *self._prepared_png_actions,
             ui.action_print_preview,
             ui.action_export_png,
             ui.action_export_cut_template,
