@@ -1,10 +1,12 @@
 # Optional image enhancement: M22 architecture decision
 
-**Current status (M30):** the normal main-page preview now optionally adopts the
+**Current status (M31):** the normal main-page preview now optionally adopts the
 accepted Original/Lanczos pipeline through an ephemeral dock. See
 [Main-page image preparation preview](prepared-image-preview.md). Printing, print
-preview, PDF/PNG, document serialization and physical geometry retain their existing
-paths. Neural providers remain deferred. The sections below retain milestone scope
+preview and regular PDF/PNG retain their existing paths. An explicit
+[prepared current-page PDF](prepared-page-pdf.md) command captures completed results
+for immutable saving. Targets are 600/900/1200; document serialization and physical
+geometry remain unchanged. Neural providers remain deferred. The sections below retain milestone scope
 and historical research decisions; they do not imply output adoption.
 
 M22 adds standalone research tooling only. It does not change application dependencies,
@@ -18,11 +20,12 @@ The accepted source is
 [units_and_sizes.py at M21](https://github.com/bigntazt/MTGProxyPrinter-Siser/blob/c7daa581303276fab37ab435e4bcec1da85cf354/mtg_proxy_printer/units_and_sizes.py).
 Its canonical layout resolution remains 300 DPI:
 
-| Type | Canonical layout units | Physical size, inches | 600-PPI raster | 1200-PPI raster |
-| --- | --- | --- | --- | --- |
-| Regular | 745 × 1040 | 745/300 × 1040/300 | 1490 × 2080 | 2980 × 4160 |
-| Oversized | 1040 × 1490 | 1040/300 × 1490/300 | 2080 × 2980 | 4160 × 5960 |
+| Type | Canonical layout units | Physical size, inches | 600-PPI raster | 900-PPI raster | 1200-PPI raster |
+| --- | --- | --- | --- | --- | --- |
+| Regular | 745 × 1040 | 745/300 × 1040/300 | 1490 × 2080 | 2235 × 3120 | 2980 × 4160 |
+| Oversized | 1040 × 1490 | 1040/300 × 1490/300 | 2080 × 2980 | 3120 × 4470 | 4160 × 5960 |
 
+900 is the M31 target extension; earlier research evidence remains 600/1200 only.
 These dimensions must not be replaced with nominal 63 × 88 mm dimensions.
 A higher-resolution image supplies more samples inside the same physical rectangle.
 1200 is an optional maximum, not a minimum, an automatic default, or a reason to
@@ -226,3 +229,14 @@ session-first shutdown. Only the central PageScene receives the resolver. Settin
 previews and all ordinary output construction remain unprepared. No production
 output, neural-provider, custom-mask/composition, persistence or retention UI is
 implemented. Future output adoption requires separate authorization and validation.
+
+## M31: explicit prepared current-page PDF
+
+A GUI-turn capture uses public session status/resolve and an export-local Qt value
+lookup, then renders one paper scene into completed PDF bytes before dialogs. A
+review shows actual outcomes and freshness; safe saving commits those bytes and
+only then schedules captured-page usage accounting. Standard outputs remain
+unchanged. The shared 600/900/1200 policy preserves existing descriptor identities
+and keeps the writer at canonical 300 coordinate DPI. Later prepared multipage,
+native printing and PNG should inherit the same target policy, with their own
+explicit ownership and validation. Queued-label timing stays deferred.

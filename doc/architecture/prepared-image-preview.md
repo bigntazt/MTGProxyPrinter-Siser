@@ -1,8 +1,9 @@
 # Main-page image preparation preview (M30)
 
 M30 adopts the [current-page session](prepared-raster-session.md) in the normal
-MainWindow. Only its central on-screen PageScene receives the resolver. Printing,
-print preview, PDF and PNG construction keep their existing image path. Settings
+MainWindow. Its central on-screen PageScene receives the resolver. M31 additionally captures
+completed results for an explicit [current-page PDF command](prepared-page-pdf.md).
+Regular Print, print preview, PDF and PNG keep their existing image path. Settings
 layout previews also retain the default, unprepared scene. There are no document,
 settings, geometry, provider recipe or derivative identity changes.
 
@@ -11,7 +12,7 @@ settings, geometry, provider recipe or derivative identity changes.
 Open **Application → Image Preparation Preview**. The reusable dock starts hidden
 and Off on each launch. Choose **Original — native source pixels** to preserve
 the captured source dimensions, or **Lanczos resize** for conventional resizing
-at 600 PPI (initial choice) or 1200 PPI (maximum offered target). Only Lanczos
+at 600 PPI (initial), 900 PPI or 1200 PPI (maximum offered target). Only Lanczos
 enables the target selector. Interpolation does not recover missing image detail.
 
 Refresh explicitly rereads sources through the session. External file changes
@@ -106,7 +107,10 @@ daily-use M21 qualification. The automation log recorded a Windows COM diagnosti
 while interaction continued; that limitation and exact commands/versions are in
 the private handoff. Runtime: Python 3.13.14, Qt/PySide6 6.11.2, Pillow 13.0.0.
 
-Later print/export adoption needs separately authorized ownership, freshness and
-presentation checks at those output boundaries. Custom masks/composition, neural
+M31 adds File → Export prepared current page as PDF after Ready, with a captured
+outcome review and immutable atomic save. Later multipage/native/PNG adoption needs
+separately authorized ownership, freshness and presentation checks. The shared
+600/900/1200 target policy applies to those future consumers. The cosmetic first-image
+Queued timing remains deferred. Custom masks/composition, neural
 providers, persisted controls and derivative retention/cleanup remain separate
 work. This milestone introduces none of them.

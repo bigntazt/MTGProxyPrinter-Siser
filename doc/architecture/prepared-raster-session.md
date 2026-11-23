@@ -4,15 +4,16 @@ M29 adds an optional GUI-thread `PreparedPageSession` over M24–M28. An explici
 caller can capture the selected page, run the existing background controller,
 decode accepted results and publish them together to a PageScene resolver.
 M30 adopts it only in the normal main-page preview; see
-[Main-page image preparation preview](prepared-image-preview.md). Output callers
-remain unchanged. There are no persisted settings, new dependencies, processing
+[Main-page image preparation preview](prepared-image-preview.md). M31 adds an explicit
+[prepared current-page PDF](prepared-page-pdf.md) capture; regular outputs remain
+unchanged. There are no persisted settings, new dependencies, processing
 recipes, custom masks, composite rendering, neural providers or geometry changes.
 
 ## API and explicit ownership
 
 ```python
 session = PreparedPageSession(document, submit_task, source_cache_root,
-                              derivative_cache, parent=None, *, max_raster_bytes=None)
+                              derivative_cache, parent=None, max_raster_bytes=None)
 session.enable(mode="lanczos", target_ppi=600)
 session.refresh()
 session.disable()
@@ -30,7 +31,7 @@ Relative source-root interpretation is frozen at construction without file acces
 Submission must use the existing asynchronous task mechanism and M27's submission
 contract; it must not run a task synchronously or schedule it and then report failure.
 
-Mode is exactly original or lanczos; target_ppi is explicitly integer 600 or 1200,
+Mode is exactly original or lanczos; target_ppi is explicitly integer 600, 900 or 1200,
 not bool. Invalid options raise before changing an existing valid state. enable
 always requests a fresh generation, including unchanged options. refresh forces
 recapture and source rereading even for unchanged ImageKey/path/options. refresh

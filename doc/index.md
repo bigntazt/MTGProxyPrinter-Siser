@@ -9,7 +9,7 @@
 
 Open **Application → Image Preparation Preview** to inspect the current page.
 Choose **Original** for native source pixels, or **Lanczos resize** at **600 PPI**
-(initial target) or **1200 PPI**. The target applies only to Lanczos; resizing does
+(initial target), **900 PPI** or **1200 PPI**. The target applies only to Lanczos; resizing does
 not recover missing detail. **Refresh** rereads sources. Use the existing task
 **Cancel** button to stop preparation; it does not retry automatically.
 
@@ -18,5 +18,11 @@ each new application launch start Off; choices are not saved. This prepares
 ordinary faces only; custom cards and composed CheckCards keep their usual preview.
 Read the details for Original fallback, uncached results or memory-limit exclusions.
 
-**Preview only. Printing, PDF and PNG exports use the existing images.**
+After Ready, choose **File → Export prepared current page as PDF…**. Review the
+captured page and actual outcomes, then choose **Save PDF…**. Refresh preparation
+first to include externally changed source images. Cancel closes without saving.
+The saved PDF remains the captured revision even if the document changes later.
+
+**Prepared images are used here and by this explicit current-page PDF command.
+Regular Print, print preview, PDF and PNG use the existing images.**
 See [preview behavior and limits](architecture/prepared-image-preview.md).
