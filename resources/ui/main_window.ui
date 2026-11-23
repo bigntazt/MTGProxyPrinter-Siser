@@ -62,6 +62,7 @@
     </property>
     <addaction name="action_show_settings"/>
     <addaction name="action_show_toolbar"/>
+    <addaction name="action_image_preparation_preview"/>
     <addaction name="action_download_card_data"/>
     <addaction name="action_cleanup_local_image_cache"/>
     <addaction name="separator"/>
@@ -130,6 +131,10 @@
    <addaction name="action_new_page"/>
    <addaction name="action_discard_page"/>
   </widget>
+  <action name="action_image_preparation_preview">
+   <property name="checkable"><bool>true</bool></property>
+   <property name="text"><string>Image Preparation Preview</string></property>
+  </action>
   <action name="action_quit">
    <property name="icon">
     <iconset theme="application-exit"/>

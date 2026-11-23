@@ -17,7 +17,7 @@
 from pathlib import Path
 from functools import partial
 
-from PySide6.QtCore import Slot, Signal, QStringListModel, QUrl, Qt
+from PySide6.QtCore import Slot, Signal, QStringListModel, QUrl, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QKeySequence, QAction, QDesktopServices, QDragEnterEvent, QDropEvent, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox, QWidget, QMainWindow, QDialog, QCheckBox
 from PySide6.QtPrintSupport import QPrintDialog
@@ -53,6 +53,9 @@ from mtg_proxy_printer.ui.cache_cleanup_wizard import CacheCleanupWizard
 from mtg_proxy_printer.ui.deck_import_wizard import DeckImportWizard
 from mtg_proxy_printer.ui.progress_bar import ProgressBarManager
 from mtg_proxy_printer.ui.siser_guide_dialog import SiserGuideDialog
+from mtg_proxy_printer.ui.image_preparation_preview import ImagePreparationPreview
+from mtg_proxy_printer.page_scene.prepared_raster_session import PreparedPageSession
+from mtg_proxy_printer.image_derivative_cache import DerivativeCache
 
 try:
     from mtg_proxy_printer.ui.generated.main_window import Ui_MainWindow
@@ -100,6 +103,7 @@ class MainWindow(QMainWindow):
         self.progress_bar_manager = self._create_progress_bar_manager()
         self.image_db = image_db
         self.document = document
+        self._setup_image_preparation_preview()
         self._connect_document_signals(document)
         self._setup_web_action_signals(ui)
         self.language_model = language_model
@@ -169,8 +173,84 @@ class MainWindow(QMainWindow):
             action.setShortcut(shortcut)
 
     def _setup_central_widget(self):
-        self.ui.central_widget.set_data(self.document, self.image_db)
+        resolver = self.preview_session.resolve if self.preview_session is not None else None
+        self.ui.central_widget.set_data(self.document, self.image_db, raster_resolver=resolver)
+        if self.preview_session is not None:
+            self.preview_session.rasters_changed.connect(self._on_preview_rasters_changed)
+            for signal in (self.preview_session.progress, self.preview_session.completed,
+                           self.preview_session.diagnostic):
+                signal.connect(self._update_preview_status)
         self.ui.central_widget.request_run_async_task.connect(self.request_run_async_task)
+
+    def _setup_image_preparation_preview(self):
+        self.preview_session = None
+        self.image_preparation_preview = dock = ImagePreparationPreview(self)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+        dock.hide()
+        self._preview_resume_timer = QTimer(self)
+        self._preview_resume_timer.setSingleShot(True)
+        self._preview_resume_timer.timeout.connect(self._apply_preview_options)
+        self.ui.action_image_preparation_preview.toggled.connect(dock.setVisible)
+        dock.visibilityChanged.connect(self._on_preview_visibility_changed)
+        dock.options_changed.connect(self._apply_preview_options)
+        dock.refresh_requested.connect(self._refresh_image_preparation_preview)
+        try:
+            source = Path(self.image_db.db_path).absolute()
+            derivative = source.parent / "ImageDerivatives"
+            # Compare resolved trees too: injected roots can contain symbolic links.
+            original_tree = source.resolve()
+            derivative_tree = derivative.resolve()
+            if derivative_tree == original_tree or original_tree in derivative_tree.parents or derivative_tree in original_tree.parents:
+                raise ValueError(self.tr("The derivative cache must be separate from the original image cache."))
+            self.preview_session = PreparedPageSession(
+                self.document, self.request_run_async_task.emit, source, DerivativeCache(derivative), self,
+                max_raster_bytes=512 * 1024 * 1024)
+        except (ValueError, TypeError, OSError, RuntimeError) as error:
+            dock.set_unavailable(self.tr("Image preparation preview is unavailable: {error}").format(error=error))
+        dock.set_locked(bool(UI_LOCK_SEMAPHORE))
+
+    @Slot(bool)
+    def _on_preview_visibility_changed(self, visible):
+        action = self.ui.action_image_preparation_preview
+        action.blockSignals(True)
+        action.setChecked(visible)
+        action.blockSignals(False)
+        if not visible:
+            self._preview_resume_timer.stop()
+            self.image_preparation_preview.set_off()
+            if self.preview_session is not None:
+                self.preview_session.disable()
+                self._update_preview_status()
+
+    @Slot()
+    def _apply_preview_options(self):
+        dock = self.image_preparation_preview
+        dock.set_locked(bool(UI_LOCK_SEMAPHORE))
+        session = self.preview_session
+        if session is None or not self.is_running:
+            return
+        if UI_LOCK_SEMAPHORE or not dock.isVisible() or dock.mode == "off":
+            session.disable()
+        else:
+            session.enable(mode=dock.mode, target_ppi=dock.target_ppi)
+        self._update_preview_status()
+
+    @Slot()
+    def _refresh_image_preparation_preview(self):
+        if (self.is_running and not UI_LOCK_SEMAPHORE and self.preview_session is not None
+                and self.image_preparation_preview.isVisible() and self.image_preparation_preview.mode != "off"):
+            self.preview_session.refresh()
+            self._update_preview_status()
+
+    @Slot()
+    def _on_preview_rasters_changed(self):
+        self.ui.central_widget.ui.page_renderer.scene().refresh_card_rasters()
+        self._update_preview_status()
+
+    @Slot()
+    def _update_preview_status(self, *_):
+        if self.preview_session is not None:
+            self.image_preparation_preview.show_status(self.preview_session.status())
 
     def _setup_undo_redo_actions(self, document: Document):
         ui = self.ui
@@ -221,6 +301,7 @@ class MainWindow(QMainWindow):
             ui.action_add_empty_card,
             ui.action_discard_page,
             ui.action_cleanup_local_image_cache,
+            ui.action_image_preparation_preview,
             ui.action_print,
             ui.action_print_pdf,
             ui.action_print_preview,
@@ -261,6 +342,8 @@ class MainWindow(QMainWindow):
         """
         logger.debug("User closed the main window, closing application…")
         event.accept()
+        if self.preview_session is not None:
+            self.preview_session.close()
         # Triggering the quit action implicitly closes all windows, thus causes this event to fire during application
         # quit. This check prevents the quit logic from running twice.
         if self.is_running:
@@ -270,6 +353,9 @@ class MainWindow(QMainWindow):
     def on_action_quit_triggered(self):
         logger.info(f"User wants to quit.")
         self.is_running = False
+        self._preview_resume_timer.stop()
+        if self.preview_session is not None:
+            self.preview_session.close()
         if self.ui.toolBar.isVisible() != mtg_proxy_printer.settings.settings["gui"].getboolean("show-toolbar"):
             logger.debug("Toolbar visibility setting changed. Updating config and writing new state to disk.")
             mtg_proxy_printer.settings.settings["gui"]["show-toolbar"] = str(self.ui.toolBar.isVisible())
@@ -280,6 +366,7 @@ class MainWindow(QMainWindow):
     def on_action_cleanup_local_image_cache_triggered(self):
         logger.info("User wants to clean up the local image cache")
         wizard = CacheCleanupWizard(self.image_db, self)
+        wizard.accepted.connect(self._refresh_image_preparation_preview, QueuedConnection)
         show_wizard_or_dialog(wizard)
 
     @Slot()
@@ -668,6 +755,11 @@ class MainWindow(QMainWindow):
     def ui_lock_acquire(self):
         global UI_LOCK_SEMAPHORE
         if not UI_LOCK_SEMAPHORE:
+            self._preview_resume_timer.stop()
+            self.image_preparation_preview.set_locked(True)
+            if self.preview_session is not None:
+                self.preview_session.disable()
+                self._update_preview_status()
             for item in self._get_widgets_and_actions_disabled_in_loading_state():
                 item.setDisabled(True)
         UI_LOCK_SEMAPHORE += 1
@@ -675,10 +767,14 @@ class MainWindow(QMainWindow):
     @Slot()
     def ui_lock_release(self):
         global UI_LOCK_SEMAPHORE
+        was_locked = bool(UI_LOCK_SEMAPHORE)
         UI_LOCK_SEMAPHORE = max(0, UI_LOCK_SEMAPHORE-1)
         if not UI_LOCK_SEMAPHORE:
             for item in self._get_widgets_and_actions_disabled_in_loading_state():
                 item.setEnabled(True)
+            self.image_preparation_preview.set_locked(False)
+            if was_locked:
+                self._preview_resume_timer.start(0)
         # The undo/redo buttons are part of the list above, so ensure that the state is consistent
         self.ui.action_redo.setEnabled(bool(self.document.redo_stack))
         self.ui.action_undo.setEnabled(bool(self.document.undo_stack))

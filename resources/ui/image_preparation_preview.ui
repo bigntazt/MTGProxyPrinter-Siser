@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ImagePreparationPreview</class>
+ <widget class="QDockWidget" name="ImagePreparationPreview">
+  <property name="windowTitle"><string>Image Preparation Preview</string></property>
+  <widget class="QWidget" name="dock_contents">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item><widget class="QLabel" name="scope_label"><property name="text"><string>Preview only. Printing, PDF and PNG exports use the existing images.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+    <item><widget class="QLabel" name="supported_cards_label"><property name="text"><string>Ordinary card faces only. Custom cards and composed CheckCards retain their existing preview.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+    <item><widget class="QComboBox" name="mode_combo"><property name="accessibleName"><string>Preparation mode</string></property>
+      <item><property name="text"><string>Off — standard preview</string></property></item>
+      <item><property name="text"><string>Original — native source pixels</string></property></item>
+      <item><property name="text"><string>Lanczos resize</string></property></item>
+    </widget></item>
+    <item><widget class="QLabel" name="target_label"><property name="text"><string>Resize target (Lanczos only)</string></property></widget></item>
+    <item><widget class="QComboBox" name="target_combo"><property name="accessibleName"><string>Lanczos target</string></property>
+      <item><property name="text"><string>600 PPI</string></property></item>
+      <item><property name="text"><string>1200 PPI</string></property></item>
+    </widget></item>
+    <item><widget class="QPushButton" name="refresh_button"><property name="text"><string>Refresh</string></property></widget></item>
+    <item><widget class="QLabel" name="status_label"><property name="text"><string>Off — standard preview</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+    <item><widget class="QPlainTextEdit" name="details_text"><property name="readOnly"><bool>true</bool></property><property name="maximumHeight"><number>160</number></property><property name="accessibleName"><string>Preparation details</string></property></widget></item>
+    <item><spacer name="verticalSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

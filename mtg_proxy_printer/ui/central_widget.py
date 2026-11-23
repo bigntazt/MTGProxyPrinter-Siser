@@ -67,7 +67,7 @@ class CentralWidget(QWidget):
         self._currently_edited_page: int = 0
         logger.info(f"Created {self.__class__.__name__} instance.")
 
-    def set_data(self, document: Document, image_db: ImageDatabase):
+    def set_data(self, document: Document, image_db: ImageDatabase, *, raster_resolver=None):
         logger.debug(f"{self.__class__.__name__} received model instances. Setting up child widgets…")
         self.document = document
         ui = self.ui
@@ -76,7 +76,7 @@ class CentralWidget(QWidget):
         document.rowsAboutToBeRemoved.connect(self.on_document_rows_about_to_be_removed)
         document.rowsInserted.connect(self.on_document_rows_inserted)
         document.rowsRemoved.connect(self.on_document_rows_removed)
-        ui.page_renderer.set_document(document)
+        ui.page_renderer.set_document(document, raster_resolver=raster_resolver)
         self._setup_add_card_widget(image_db)
         self._setup_document_view(document)
         logger.debug(f"{self.__class__.__name__} setup completed")
