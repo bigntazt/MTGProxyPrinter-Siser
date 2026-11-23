@@ -172,3 +172,20 @@ integration must capture requests safely, retain result-ID representations and
 cancel/invalidate work when relevant state changes. M27 does not observe documents,
 provide a new global scheduler, or implement UI/export adoption, masking,
 composition, neural providers or M28.
+
+## M28: explicit native raster presentation
+
+[Prepared raster presentation](prepared-raster-presentation.md) adds a GUI-thread
+decoder from accepted PreparedImage bytes to an owned native-resolution QPixmap
+with immutable identifying metadata. An optional PageScene in-memory resolver
+validates ordinary-card identity/size and supplies M23's existing raster seam,
+including when the legacy image is unavailable. Explicit refresh reconstructs
+items for adoption or invalidation; model images and physical geometry stay intact.
+
+Original/fallback pixels keep their native size. Both 600/1200 targets reach the
+explicit scene and synthetic software PDF proof without canonical downsampling.
+Default scenes remain pixel-identical. No normal application/export caller adopts
+this interface. A later document/session binding must own source/settings freshness,
+generation, result lifetimes and invalidation/refresh. Custom-card presentation
+masks and high-resolution CheckCard composition remain required follow-ups before
+their adoption. No UI/settings, neural provider or subsequent milestone is added.

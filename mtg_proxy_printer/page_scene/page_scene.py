@@ -23,15 +23,18 @@ from PySide6.QtGui import QPen, QColorConstants, QColor, QPalette, QFontMetrics
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsLineItem, QGraphicsSimpleTextItem, QGraphicsScene
 
 from mtg_proxy_printer.model.document import Document
+from mtg_proxy_printer.model.card import Card
+from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
 from mtg_proxy_printer.model.document_page import PageColumns
 from mtg_proxy_printer.model.page_layout import PageLayoutSettings
 from mtg_proxy_printer.model.page_geometry import PageGeometry, build_page_geometry
 from mtg_proxy_printer.page_scene.items import RenderLayers, NeighborsPresent, CardItem
+from mtg_proxy_printer.page_scene.prepared_pixmap import PreparedPixmap, require_gui_thread
 from mtg_proxy_printer.page_scene.registration_profiles import RegistrationProfile, get_registration_profile
 from mtg_proxy_printer.registration_profile_ids import RegistrationProfileId
 from mtg_proxy_printer.settings import settings
 from mtg_proxy_printer.units_and_sizes import PageType, unit_registry, distance_to_rounded_px, \
-    Quantity
+    Quantity, UUID
 from mtg_proxy_printer.logger import get_logger
 logger = get_logger(__name__)
 del get_logger
@@ -71,14 +74,21 @@ class PageScene(QGraphicsScene):
 
     scene_size_changed = Signal()
 
-    def __init__(self, document: Document, render_mode: RenderMode, parent: QObject | None = None):
+    def __init__(self, document: Document, render_mode: RenderMode, parent: QObject | None = None,
+                 *, raster_resolver=None):
         """
         :param document: The document instance
         :param render_mode: Specifies the render mode.
           On paper, no background is drawn and cut markers use black.
           On Screen, the background uses the theme’s background color and cut markers use a high-contrast color.
         :param parent: Optional Qt parent object
+        :param raster_resolver: Optional GUI-thread in-memory prepared-raster lookup. No normal caller adopts it.
         """
+        if raster_resolver is not None:
+            if not callable(raster_resolver):
+                raise TypeError("raster_resolver must be callable or None")
+            require_gui_thread()
+        self._raster_resolver = raster_resolver
         self.render_mode = render_mode
         self.print_markers: list[QGraphicsItem] = []
         self._registration_profile: RegistrationProfile | None = None
@@ -480,14 +490,51 @@ class PageScene(QGraphicsScene):
         for row in range(images_to_draw):
             self.draw_card(document.index(row, PageColumns.Image, parent), page_type)
 
+    def _resolve_card_raster(self, index: QModelIndex):
+        if self._raster_resolver is None:
+            return None
+        require_gui_thread()
+        card = index.data(ItemDataRole.UserRole)
+        # Exclude composite/custom/placeholder/unsupported identities before the lookup.
+        if (type(card) is not Card or not isinstance(card.scryfall_id, str)
+                or not UUID.uuid_re.fullmatch(card.scryfall_id)
+                or type(card.is_front) is not bool or type(card.highres_image) is not bool):
+            return None
+        dimensions = card.size.as_qsize_px().toTuple()
+        if dimensions not in ((745, 1040), (1040, 1490)):
+            return None
+        prepared = self._raster_resolver(index)
+        if prepared is None:
+            return None
+        if not isinstance(prepared, PreparedPixmap):
+            raise TypeError("raster_resolver must return PreparedPixmap or None")
+        key = ImageKey(card.scryfall_id, card.is_front, ImageQuality.of_card(card))
+        if (prepared.source_identity.image_key != key or prepared.canonical_dimensions != dimensions
+                or prepared.pixmap.isNull() or prepared.pixmap.size().toTuple() != prepared.actual_dimensions):
+            logger.warning("Ignoring prepared raster: card identity, canonical size or pixmap dimensions do not match")
+            return None
+        return prepared.pixmap
+
+    @Slot()
+    def refresh_card_rasters(self):
+        """Reconstruct selected-page items after an explicit resolver update or invalidation."""
+        require_gui_thread()
+        self._retry_pending_geometry()
+        self._clear_card_items()
+        if self._refresh_actual_geometry():
+            self._draw_cards()
+            self.update_card_bleeds()
+
     def draw_card(self, index: QModelIndex, page_type: PageType):
         if self.geometry is None or not index.isValid():
             return
         if any(item.index == index for item in self.card_items):
             return
-        if index.data(ItemDataRole.DisplayRole) is not None:
+        raster = self._resolve_card_raster(index)
+        if raster is not None or index.data(ItemDataRole.DisplayRole) is not None:
             placement = self.geometry.placements[index.row()]
-            card_item = CardItem(index, self.document)
+            card_item = (CardItem(index, self.document, raster=raster) if raster is not None
+                         else CardItem(index, self.document))
             self.addItem(card_item)
             card_item.setPos(self._presentation_position(placement.trim_px.x, placement.trim_px.y))
 
