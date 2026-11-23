@@ -1,5 +1,12 @@
 # Optional image enhancement: M22 architecture decision
 
+**Current status (M30):** the normal main-page preview now optionally adopts the
+accepted Original/Lanczos pipeline through an ephemeral dock. See
+[Main-page image preparation preview](prepared-image-preview.md). Printing, print
+preview, PDF/PNG, document serialization and physical geometry retain their existing
+paths. Neural providers remain deferred. The sections below retain milestone scope
+and historical research decisions; they do not imply output adoption.
+
 M22 adds standalone research tooling only. It does not change application dependencies,
 image loading, cache behavior, physical geometry, rendering, settings or output jobs.
 The benchmark findings and unresolved selection questions are in
@@ -204,3 +211,18 @@ No normal application or output caller adopts the session. Arbitrary unnotified
 file edits require explicit refresh, page scope is not a hard RAM limit, and normal
 readiness/adoption, custom masks, composite rendering and neural integration remain
 deferred. No M30 implementation is introduced.
+
+## M30: normal main-page preview adoption
+
+Application → Image Preparation Preview opens a reusable, initially hidden/Off
+dock. Original preserves native pixels; optional Lanczos offers 600/1200 PPI.
+Current-generation status distinguishes publication application, actual outcomes,
+fallback and cancellation. A 512 MiB retained prepared-raster payload budget bounds
+unique accepted results, without claiming a total-memory limit or reducing PPI.
+
+The owner uses the actual injected source cache and a disjoint ImageDerivatives
+sibling, the existing task/progress/Cancel path, loading-lock transitions and
+session-first shutdown. Only the central PageScene receives the resolver. Settings
+previews and all ordinary output construction remain unprepared. No production
+output, neural-provider, custom-mask/composition, persistence or retention UI is
+implemented. Future output adoption requires separate authorization and validation.
