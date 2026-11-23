@@ -130,3 +130,25 @@ No production caller adopts this backend. Originals, M24 inspection, M23 geometr
 settings, rendering, export and existing cache behavior are unchanged. There is
 no provider execution, processing, in-flight deduplication, retention/cleanup,
 neural default or M26 integration. M22 benchmark artifacts remain research only.
+
+## M26: inactive Original/Lanczos preparation service
+
+[Original and Lanczos image preparation](image-preparation.md) documents the new
+synchronous, single-image coordinator. Original returns exact captured bytes
+without Pillow or cache access. Optional Pillow Lanczos resolves a current-runtime
+recipe, reuses M25 first, and generates only on misses. Outcomes distinguish
+cached/new/uncached derivatives and explicit Original fallback. Shared source/plan
+validation preserves the M25 descriptor/key contract.
+
+Processing follows M24's first-frame/no-auto-orientation policy, not M22's EXIF
+transpose/sRGB research policy. It normalizes supported samples to straight RGBA,
+uses associated-alpha full-image Lanczos, preserves only Qt-exposed valid RGB ICC,
+and encodes RGBA8 PNG without source EXIF/DPI/text. No color conversion, mask or
+neural provider is introduced. An explicit Lanczos choice still normalizes/encodes
+sufficient sources; Original retains its actual native dimensions.
+
+The image-processing extra declares Pillow>=13.0,<14. No normal application caller
+adopts the service. Custom forced-corner masking, CheckCard composition,
+rendering/export adoption, scheduling, UI/settings and cache retention remain
+later concerns. Existing behavior and physical geometry are unchanged. No neural
+default has been selected; no recovered-detail or physical-quality claim is made.

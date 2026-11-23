@@ -40,6 +40,9 @@ dynamic = [
     "version",
 ]
 
+[project.optional-dependencies]
+image-processing = ["Pillow>=13.0,<14"]
+
 [dependency-groups]
 tests = [
     "pytest >= 6.0, < 11",
