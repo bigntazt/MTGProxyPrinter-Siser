@@ -36,7 +36,7 @@ def test_controls_are_ephemeral_and_mode_specific(qtbot):
     dock.set_off()
     assert not dock.target_combo.isEnabled()
     assert not dock.refresh_button.isEnabled()
-    assert "Printing, PDF and PNG" in dock.ui.scope_label.text()
+    assert "regular Print, PDF and PNG" in dock.ui.scope_label.text()
     assert "CheckCards" in dock.ui.supported_cards_label.text()
 
 

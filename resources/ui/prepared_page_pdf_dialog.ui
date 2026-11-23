@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PreparedPagePDFDialog</class>
+ <widget class="QDialog" name="PreparedPagePDFDialog">
+  <property name="windowTitle"><string>Review prepared current-page PDF</string></property>
+  <property name="minimumSize"><size><width>540</width><height>380</height></size></property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item><widget class="QPlainTextEdit" name="summary_text"><property name="readOnly"><bool>true</bool></property></widget></item>
+   <item><widget class="QLabel" name="freshness_label"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>This PDF uses the completed preparation results. Refresh preparation before exporting to include externally changed source images.</string></property></widget></item>
+   <item><widget class="QLabel" name="error_label"><property name="wordWrap"><bool>true</bool></property><property name="text"><string/></property></widget></item>
+   <item><widget class="QDialogButtonBox" name="button_box"><property name="standardButtons"><set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set></property></widget></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

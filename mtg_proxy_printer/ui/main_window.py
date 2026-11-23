@@ -54,6 +54,8 @@ from mtg_proxy_printer.ui.deck_import_wizard import DeckImportWizard
 from mtg_proxy_printer.ui.progress_bar import ProgressBarManager
 from mtg_proxy_printer.ui.siser_guide_dialog import SiserGuideDialog
 from mtg_proxy_printer.ui.image_preparation_preview import ImagePreparationPreview
+from mtg_proxy_printer.ui.prepared_page_pdf_dialog import PreparedPagePDFDialog
+from mtg_proxy_printer.prepared_page_pdf import capture_prepared_page_pdf, require_ready_status
 from mtg_proxy_printer.page_scene.prepared_raster_session import PreparedPageSession
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
 
@@ -114,6 +116,46 @@ class MainWindow(QMainWindow):
         self.current_dialog: QDialog | None = None
         self.siser_guide_dialog: SiserGuideDialog | None = None
         logger.info(f"Created {self.__class__.__name__} instance.")
+
+    @property
+    def current_dialog(self):
+        return getattr(self, "_current_dialog", None)
+
+    @current_dialog.setter
+    def current_dialog(self, dialog):
+        self._current_dialog = dialog
+        self._update_prepared_pdf_action()
+
+    def _prepared_pdf_available(self):
+        if (not self.is_running or UI_LOCK_SEMAPHORE or self.current_dialog is not None
+                or getattr(self, "preview_session", None) is None):
+            return False
+        try:
+            require_ready_status(self.preview_session.status())
+            return self.document.get_current_page_index().isValid()
+        except (ValueError, RuntimeError):
+            return False
+
+    def _update_prepared_pdf_action(self):
+        self.ui.action_export_prepared_page_pdf.setEnabled(self._prepared_pdf_available())
+
+    @Slot()
+    def on_action_export_prepared_page_pdf_triggered(self):
+        if not self._prepared_pdf_available() or not self._artwork_output_allowed():
+            return
+        try:
+            dock = self.image_preparation_preview
+            result = capture_prepared_page_pdf(
+                self.document, self.preview_session, mode=dock.mode, target_ppi=dock.target_ppi,
+                landscape_workaround=mtg_proxy_printer.settings.settings["export"].getboolean(
+                    "landscape-compatibility-workaround"))
+        except (ValueError, RuntimeError) as error:
+            self.on_error_occurred(str(error))
+            return
+        self.current_dialog = dialog = PreparedPagePDFDialog(result, self)
+        dialog.request_run_async_task.connect(self.request_run_async_task)
+        dialog.finished.connect(self.on_dialog_finished)
+        dialog.open()
 
     @Slot()
     def on_action_show_siser_guide_triggered(self):
@@ -251,6 +293,7 @@ class MainWindow(QMainWindow):
     def _update_preview_status(self, *_):
         if self.preview_session is not None:
             self.image_preparation_preview.show_status(self.preview_session.status())
+        self._update_prepared_pdf_action()
 
     def _setup_undo_redo_actions(self, document: Document):
         ui = self.ui
@@ -304,6 +347,7 @@ class MainWindow(QMainWindow):
             ui.action_image_preparation_preview,
             ui.action_print,
             ui.action_print_pdf,
+            ui.action_export_prepared_page_pdf,
             ui.action_print_preview,
             ui.action_export_png,
             ui.action_export_cut_template,
@@ -775,6 +819,7 @@ class MainWindow(QMainWindow):
             self.image_preparation_preview.set_locked(False)
             if was_locked:
                 self._preview_resume_timer.start(0)
+            self._update_prepared_pdf_action()
         # The undo/redo buttons are part of the list above, so ensure that the state is consistent
         self.ui.action_redo.setEnabled(bool(self.document.redo_stack))
         self.ui.action_undo.setEnabled(bool(self.document.undo_stack))

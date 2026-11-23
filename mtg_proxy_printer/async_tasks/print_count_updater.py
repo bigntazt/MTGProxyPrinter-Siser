@@ -40,12 +40,22 @@ class PrintCountUpdater(AsyncTask):
     If it were synchronous, printing would block the UI thread until the update completes,
     or the app would miss writing the data at all, or printing/PDF export had to be prohibited.
     """
-    def __init__(self, document: "Document", db: sqlite3.Connection = None):
+    def __init__(self, document: "Document" = None, db: sqlite3.Connection = None, *, image_keys=None, db_path=None):
+        if document is not None:
+            if image_keys is not None or db_path is not None:
+                raise ValueError("Choose document-based or explicit captured usage inputs, not both")
+            captured_path = document.card_db.db_path
+            captured_data = [(item.scryfall_id, item.is_front) for item in document.get_all_image_keys_in_document()]
+        else:
+            if image_keys is None or db_path is None:
+                raise ValueError("Captured usage requires image_keys and db_path")
+            captured_path = str(db_path)
+            captured_data = tuple(dict.fromkeys((item.scryfall_id, item.is_front) for item in image_keys))
         super().__init__()
-        self.db_path = document.card_db.db_path
+        self.db_path = captured_path
         # Collect the data now, so that the delayed run() does not operate on a potentially modified document,
         # but can use the data from the time the document was printed/exported.
-        self.data = [(item.scryfall_id, item.is_front) for item in document.get_all_image_keys_in_document()]
+        self.data = captured_data
         self.db_created = db is None
         self._db = db
 

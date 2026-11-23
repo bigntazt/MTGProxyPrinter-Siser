@@ -51,6 +51,7 @@
     <addaction name="separator"/>
     <addaction name="action_print_preview"/>
     <addaction name="action_print"/>
+    <addaction name="action_export_prepared_page_pdf"/>
     <addaction name="menu_export"/>
     <addaction name="separator"/>
     <addaction name="action_import_deck_list"/>
@@ -131,6 +132,11 @@
    <addaction name="action_new_page"/>
    <addaction name="action_discard_page"/>
   </widget>
+  <action name="action_export_prepared_page_pdf">
+   <property name="enabled"><bool>false</bool></property>
+   <property name="text"><string>Export prepared current page as PDF…</string></property>
+   <property name="toolTip"><string>Open Image Preparation Preview, choose Original or Lanczos, and wait for Ready before exporting this page.</string></property>
+  </action>
   <action name="action_image_preparation_preview">
    <property name="checkable"><bool>true</bool></property>
    <property name="text"><string>Image Preparation Preview</string></property>
