@@ -18,6 +18,9 @@ existing artwork/Siser readiness validation. It never compacts, changes selectio
 downloads missing images or starts another preparation batch.
 
 prepared_page_pdf.capture_prepared_page_pdf executes on the GUI thread in one turn.
+M32 moves format-independent capture, accounting and scene lifetime to the private
+prepared_page_output helper, reused by [prepared PNG](prepared-page-png.md). The
+public PDF result/capture interfaces and output policy remain unchanged.
 Before any dialog it captures public status(), generation, completion, diagnostics,
 the persistent page index and actual identity, page number/source path, shared
 PageGeometry, preview options and landscape-workaround choice. It resolves each
@@ -107,6 +110,7 @@ belong to the private handoff; this is software evidence, not printed-quality pr
 512 MiB still bounds retained prepared-raster payload only. Source/temporary/Qt
 buffers, PDF encoding and completed bytes need additional memory. The cosmetic
 first-image Queued label timing is deferred. Later prepared multipage, native print,
-print preview or PNG need separate ownership/validation and inherit the same
+print preview need separate ownership/validation and inherit the same
 600/900/1200 policy. No neural provider, persistence, custom-mask/composite support,
-new scheduler or layout changes are introduced here.
+new scheduler or layout changes are introduced here. M32 separately adds the explicit
+current-page PNG path; regular PNG output stays unchanged.

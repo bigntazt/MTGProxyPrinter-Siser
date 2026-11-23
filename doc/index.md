@@ -24,5 +24,16 @@ first to include externally changed source images. Cancel closes without saving.
 The saved PDF remains the captured revision even if the document changes later.
 
 **Prepared images are used here and by this explicit current-page PDF command.
-Regular Print, print preview, PDF and PNG use the existing images.**
+The prepared PNG submenu independently selects the page canvas at 600, 900 or 1200
+PPI, including in Original mode. Regular Print, print preview, PDF and PNG use the
+existing images.**
 See [preview behavior and limits](architecture/prepared-image-preview.md).
+
+## Prepared current-page PNG
+
+After Image Preparation Preview is Ready, choose **File → Export prepared current
+page as PNG → 600 / 900 / 1200 PPI**. Review the source preparation outcomes, page
+pixel dimensions and white background, then Save PNG. This page resolution does
+not change the prepared source pixels or restore missing detail. Large pages pause
+the UI during rendering/encoding; an over-budget canvas can use lower PNG PPI or
+prepared PDF. Cancel closes without saving. See [PNG limits and behavior](architecture/prepared-page-png.md).

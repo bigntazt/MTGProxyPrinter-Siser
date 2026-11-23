@@ -1,11 +1,12 @@
 # Optional image enhancement: M22 architecture decision
 
-**Current status (M31):** the normal main-page preview now optionally adopts the
+**Current status (M32):** the normal main-page preview now optionally adopts the
 accepted Original/Lanczos pipeline through an ephemeral dock. See
 [Main-page image preparation preview](prepared-image-preview.md). Printing, print
 preview and regular PDF/PNG retain their existing paths. An explicit
 [prepared current-page PDF](prepared-page-pdf.md) command captures completed results
-for immutable saving. Targets are 600/900/1200; document serialization and physical
+for immutable saving. [Prepared current-page PNG](prepared-page-png.md) uses the same
+capture/save contract with separate page output PPI and white RGB paper. Targets are 600/900/1200; document serialization and physical
 geometry remain unchanged. Neural providers remain deferred. The sections below retain milestone scope
 and historical research decisions; they do not imply output adoption.
 
@@ -240,3 +241,12 @@ unchanged. The shared 600/900/1200 policy preserves existing descriptor identiti
 and keeps the writer at canonical 300 coordinate DPI. Later prepared multipage,
 native printing and PNG should inherit the same target policy, with their own
 explicit ownership and validation. Queued-label timing stays deferred.
+
+## M32: prepared current-page PNG
+
+The shared capture helper and review/save base preserve the PDF public interfaces.
+A File submenu selects 600/900/1200 page PPI independently of source preparation.
+Direct white RGB888 rendering has its own aligned 512 MiB page-raster cap; it stays
+synchronous through encoding, with measured temporary UI pauses. Captured bytes and
+page-only accounting remain immutable. Ordinary output paths and physical geometry
+are unchanged; multipage/native adoption remains separate.
