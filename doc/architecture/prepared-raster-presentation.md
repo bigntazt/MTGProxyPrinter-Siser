@@ -187,3 +187,12 @@ native interactive UI. No catalog, inference, printer or cutter operation ran.
 Qt reference: [image reader transformation controls](https://doc.qt.io/qt-6/qimagereader.html#autoTransform),
 [pixmap value representation](https://doc.qt.io/qt-6/qpixmap.html#details),
 [PDF device resolution](https://doc.qt.io/qt-6/qpdfwriter.html#setResolution).
+
+## M29 integration boundary
+
+The optional [current-page session](prepared-raster-session.md) now owns explicit
+GUI capture, generations, invalidation, staging and atomic publication for this
+resolver. It remains unconstructed by normal application/export callers. Its
+notification drives reconstruction; the decoder, resolver and M23 raster mapping
+are unchanged. Unnotified file changes, hard memory/readiness policy, custom masks
+and composite/output adoption retain the documented later boundaries.

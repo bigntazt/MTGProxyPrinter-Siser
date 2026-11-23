@@ -189,3 +189,18 @@ this interface. A later document/session binding must own source/settings freshn
 generation, result lifetimes and invalidation/refresh. Custom-card presentation
 masks and high-resolution CheckCard composition remain required follow-ups before
 their adoption. No UI/settings, neural provider or subsequent milestone is added.
+
+## M29: optional current-page preparation session
+
+[Prepared page sessions](prepared-raster-session.md) connect accepted source,
+background preparation and GUI presentation through an explicit, inactive caller
+interface. One current-page stage publishes atomically after successful, current-
+generation completion. Model/settings invalidation hides lookup immediately,
+cancels old work and coalesces only the latest successor after terminal cleanup.
+Disable queues reconstruction back to legacy rendering; permanent close suppresses
+late access and notifications. Expected missing/decode failures retain usable fallback.
+
+No normal application or output caller adopts the session. Arbitrary unnotified
+file edits require explicit refresh, page scope is not a hard RAM limit, and normal
+readiness/adoption, custom masks, composite rendering and neural integration remain
+deferred. No M30 implementation is introduced.
