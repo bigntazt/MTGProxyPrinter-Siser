@@ -152,3 +152,23 @@ adopts the service. Custom forced-corner masking, CheckCard composition,
 rendering/export adoption, scheduling, UI/settings and cache retention remain
 later concerns. Existing behavior and physical geometry are unchanged. No neural
 default has been selected; no recovered-detail or physical-quality claim is made.
+
+## M27: inactive background preparation batches
+
+[Background image preparation](image-preparation-batch.md) adds a sequential
+AsyncTask and owner-thread controller over the accepted M24–M26 services. Frozen
+captured requests are grouped by exact locator and then validated content metadata.
+Only explicitly accepted results become alias targets, including uncached success.
+A single-slot mailbox, lightweight queued wakeups, cooperative cancellation and
+batch/delivery IDs bound payload buffering and suppress stale deliveries.
+
+Progress counts accepted occurrences. Consumer failure takes precedence over
+cancellation, and terminal handling releases active state before finished.
+Existing runner/progress/shutdown infrastructure and processing/cache policies
+are unchanged. Source unavailability and Original fallback remain explicit.
+
+No normal application caller adopts this service. Future document/settings
+integration must capture requests safely, retain result-ID representations and
+cancel/invalidate work when relevant state changes. M27 does not observe documents,
+provide a new global scheduler, or implement UI/export adoption, masking,
+composition, neural providers or M28.
