@@ -3,7 +3,8 @@
 M28 supplies an explicit presentation seam over accepted M24–M27 services. No
 normal application, document session, live view or export entry point adopts it.
 There is no automatic preparation, new setting, provider, cache or persistent
-schema. Original/Lanczos and explicit 600/1200 targets remain the accepted choices.
+schema. Original/Lanczos remain the accepted choices. M31 extends targets to exactly
+600, 900 and 1200; earlier M28 evidence below covers only 600/1200.
 
 ## Decoder and value ownership
 
@@ -97,10 +98,10 @@ watermarks and shared physical output transform are unchanged. Refresh does not
 unnecessarily update existing footer text. Later bleed updates keep the existing
 group-bounds policy; this milestone does not alter it.
 
-| Card type | Canonical at 300 DPI | 600-PPI artwork | 1200-PPI artwork |
-|---|---:|---:|---:|
-| Regular | 745 × 1040 | 1490 × 2080 | 2980 × 4160 |
-| Oversized | 1040 × 1490 | 2080 × 2980 | 4160 × 5960 |
+| Card type | Canonical at 300 DPI | 600-PPI artwork | 900-PPI artwork | 1200-PPI artwork |
+|---|---:|---:|---:|---|
+| Regular | 745 × 1040 | 1490 × 2080 | 2235 × 3120 | 2980 × 4160 |
+| Oversized | 1040 × 1490 | 2080 × 2980 | 3120 × 4470 | 4160 × 5960 |
 
 These accepted physical dimensions are not nominal 63 × 88 mm. Regular artwork
 occupies 178.8 × 249.6 PDF points; oversized occupies 249.6 × 357.6 points,

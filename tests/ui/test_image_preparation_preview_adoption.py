@@ -162,7 +162,7 @@ def test_controls_drive_cold_warm_duplicates_both_targets_and_restore(preview, m
     with patch.object(image_processing_pillow.PillowRuntime, "produce_png", side_effect=AssertionError("Warm producer")):
         h.dock.refresh_button.click()
         assert dict(h.ready().completion.outcome_counts) == {"cache_hit": 2}
-    h.dock.target_combo.setCurrentIndex(1)
+    h.dock.target_combo.setCurrentIndex(h.dock.target_combo.findData(1200))
     status = h.ready()
     assert dict(status.completion.outcome_counts) == {"generated_cached": 2}
     assert h.scene.card_items[0].card_pixmap_item.pixmap().size().toTuple() == (2980, 4160)

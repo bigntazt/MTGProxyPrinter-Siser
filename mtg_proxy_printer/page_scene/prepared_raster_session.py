@@ -9,7 +9,7 @@ from mtg_proxy_printer.async_tasks.image_preparation import (
     BatchEntry, BatchProgress, BatchSummary, ImagePreparationController, PreparedResult, ResultAlias, UnavailableResult,
 )
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
-from mtg_proxy_printer.image_source import SourceRequest, capture_source_request
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI, SourceRequest, capture_source_request
 from mtg_proxy_printer.model.card import Card
 from mtg_proxy_printer.model.document_page import PageColumns
 from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
@@ -210,8 +210,8 @@ class PreparedPageSession(QObject):
         self._assert_gui()
         if type(mode) is not str or mode not in ("original", "lanczos"):
             raise ValueError("Session mode must be original or lanczos")
-        if type(target_ppi) is not int or target_ppi not in (600, 1200):
-            raise ValueError("Session target must be integer 600 or 1200")
+        if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
+            raise ValueError("Session target must be integer 600, 900 or 1200")
         if self._closed:
             raise RuntimeError("Preparation session is closed")
         self._options = mode, target_ppi

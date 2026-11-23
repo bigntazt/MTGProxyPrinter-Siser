@@ -93,17 +93,17 @@ repair storage or replace ordinary rendering.
 
 ## Explicit resolution planning
 
-`plan_target_resolution(snapshot, target_ppi)` accepts only integer 600 or 1200
+`plan_target_resolution(snapshot, target_ppi)` accepts only integer 600, 900 or 1200
 (including rejection of bool, floats and strings), with no default. It derives
 target pixels from captured canonical dimensions and existing RESOLUTION at
 300 dots/inch. It reports source identity, canonical and source dimensions,
 requested PPI, exact target dimensions, effective source PPI on each axis and
 `sufficient`. It does not select Original/Lanczos/neural processing or touch pixels.
 
-| Physical type | Canonical | 600-PPI target | 1200-PPI target |
-|---|---|---|---|
-| Regular | 745 × 1040 | 1490 × 2080 | 2980 × 4160 |
-| Oversized | 1040 × 1490 | 2080 × 2980 | 4160 × 5960 |
+| Physical type | Canonical | 600-PPI target | 900-PPI target | 1200-PPI target |
+|---|---|---|---|---|
+| Regular | 745 × 1040 | 1490 × 2080 | 2235 × 3120 | 2980 × 4160 |
+| Oversized | 1040 × 1490 | 2080 × 2980 | 3120 × 4470 | 4160 × 5960 |
 
 Each effective PPI is `source_axis * 300 / canonical_axis`. Sufficiency is exactly
 `source_width >= target_width AND source_height >= target_height`. One sufficient

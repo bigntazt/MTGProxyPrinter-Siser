@@ -15,6 +15,7 @@
     <item><widget class="QLabel" name="target_label"><property name="text"><string>Resize target (Lanczos only)</string></property></widget></item>
     <item><widget class="QComboBox" name="target_combo"><property name="accessibleName"><string>Lanczos target</string></property>
       <item><property name="text"><string>600 PPI</string></property></item>
+      <item><property name="text"><string>900 PPI</string></property></item>
       <item><property name="text"><string>1200 PPI</string></property></item>
     </widget></item>
     <item><widget class="QPushButton" name="refresh_button"><property name="text"><string>Refresh</string></property></widget></item>

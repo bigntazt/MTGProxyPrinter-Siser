@@ -5,7 +5,7 @@ from PySide6.QtCore import QBuffer, QIODevice, QThread
 from PySide6.QtGui import QGuiApplication, QImageReader, QPixmap
 
 from mtg_proxy_printer.image_preparation import PreparedImage
-from mtg_proxy_printer.image_source import SourceIdentity
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI, SourceIdentity
 from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
 
 
@@ -54,7 +54,7 @@ def decode_prepared_pixmap(prepared: PreparedImage) -> PreparedPixmap | RasterDe
     if not all(_dimensions_valid(value) for value in (
             prepared.canonical_dimensions, prepared.actual_dimensions, prepared.target_dimensions)):
         return RasterDecodeFailure("invalid_metadata", "Declared dimensions must contain two positive integers")
-    if (type(prepared.target_ppi) is not int or prepared.target_ppi not in (600, 1200)
+    if (type(prepared.target_ppi) is not int or prepared.target_ppi not in SUPPORTED_TARGET_PPI
             or tuple(prepared.target_dimensions) != tuple(
                 axis * (prepared.target_ppi // 300) for axis in prepared.canonical_dimensions)):
         return RasterDecodeFailure("invalid_metadata", "Target dimensions must agree with canonical dimensions and PPI")

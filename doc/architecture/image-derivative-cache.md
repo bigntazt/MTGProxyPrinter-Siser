@@ -83,7 +83,7 @@ The complete request object has exactly:
 Dimensions serialize as two positive integer arrays; booleans cannot pass integer
 validation. Source identifiers use the established canonical lowercase UUID
 grammar; face is boolean and SHA-256 is 64 lowercase hex characters. Target PPI
-is strictly integer 600 or 1200. Format and inspection strings are nonempty.
+is strictly integer 600, 900 or 1200. Format and inspection strings are nonempty.
 The source-inspection Qt version is separate from the processing runtime declared
 in a recipe. Its inclusion conservatively invalidates reuse, without claiming Qt
 produced the derivative.
@@ -103,10 +103,10 @@ current source/settings, never obtained by trusting a cached manifest.
 
 Canonical 300-DPI geometry and exact targets remain:
 
-| Type | Canonical | 600 PPI | 1200 PPI |
-|---|---|---|---|
-| Regular | 745 × 1040 | 1490 × 2080 | 2980 × 4160 |
-| Oversized | 1040 × 1490 | 2080 × 2980 | 4160 × 5960 |
+| Type | Canonical | 600 PPI | 900 PPI | 1200 PPI |
+|---|---|---|---|---|
+| Regular | 745 × 1040 | 1490 × 2080 | 2235 × 3120 | 2980 × 4160 |
+| Oversized | 1040 × 1490 | 2080 × 2980 | 3120 × 4470 | 4160 × 5960 |
 
 1200 is an optional maximum. Original/disabled operation need not create an
 entry. Decisions about sufficient sources, processing and native-raster adoption

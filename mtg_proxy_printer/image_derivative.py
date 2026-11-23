@@ -5,7 +5,7 @@ import json
 import math
 import re
 
-from mtg_proxy_printer.image_source import SourceIdentity, SourceSnapshot, ResolutionPlan, plan_target_resolution
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI, SourceIdentity, SourceSnapshot, ResolutionPlan, plan_target_resolution
 from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
 from mtg_proxy_printer.units_and_sizes import RESOLUTION, UUID
 
@@ -162,8 +162,8 @@ def _validate_descriptor(spec):
     canonical = _dimensions(geometry["canonical_dimensions"])
     target = _dimensions(geometry["target_dimensions"])
     ppi = geometry["target_ppi"]
-    if type(ppi) is not int or ppi not in (600, 1200):
-        raise ValueError("Target PPI must be the integer 600 or 1200")
+    if type(ppi) is not int or ppi not in SUPPORTED_TARGET_PPI:
+        raise ValueError("Target PPI must be the integer 600, 900 or 1200")
     base = RESOLUTION.to("dots/inch").magnitude
     if target != tuple(round(axis*ppi/base) for axis in canonical):
         raise ValueError("Target dimensions disagree with physical geometry")

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from mtg_proxy_printer.model.card import AnyCardType
 
 
+SUPPORTED_TARGET_PPI = (600, 900, 1200)
 DECODE_POLICY = "qt-first-frame-no-auto-transform-v1"
 Dimensions = tuple[int, int]
 UnavailableReason = Literal[
@@ -152,8 +153,8 @@ def load_source_snapshot(request: SourceRequest) -> SourceSnapshot | SourceUnava
 
 def plan_target_resolution(snapshot: SourceSnapshot, target_ppi: int) -> ResolutionPlan:
     """Plan only. Sufficiency requires both axes; never resize or select a provider."""
-    if type(target_ppi) is not int or target_ppi not in (600, 1200):
-        raise ValueError("Target PPI must be the integer 600 or 1200")
+    if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
+        raise ValueError("Target PPI must be the integer 600, 900 or 1200")
     base_ppi = RESOLUTION.to("dots/inch").magnitude
     target = tuple(round(dimension*target_ppi/base_ppi) for dimension in snapshot.canonical_dimensions)
     effective = tuple(native*base_ppi/canonical for native, canonical in

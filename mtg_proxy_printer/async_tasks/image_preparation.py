@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Literal
 from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
 
 from mtg_proxy_printer.async_tasks.base import AsyncTask
-from mtg_proxy_printer.image_source import SourceRequest, SourceUnavailable, load_source_snapshot, plan_target_resolution
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI, SourceRequest, SourceUnavailable, load_source_snapshot, plan_target_resolution
 from mtg_proxy_printer.image_preparation import PreparedImage, prepare_image
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
 from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
@@ -187,8 +187,8 @@ class PreparationBatchTask(AsyncTask):
             raise TypeError("Batch ID must be an integer")
         if type(mode) is not str or mode not in ("original", "lanczos"):
             raise ValueError("Batch mode must be original or lanczos")
-        if type(target_ppi) is not int or target_ppi not in (600, 1200):
-            raise ValueError("Batch target must be integer 600 or 1200")
+        if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
+            raise ValueError("Batch target must be integer 600, 900 or 1200")
         if not isinstance(cache, DerivativeCache):
             raise TypeError("An explicit DerivativeCache is required")
         self.batch_id = batch_id

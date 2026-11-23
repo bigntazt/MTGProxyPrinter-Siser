@@ -2,6 +2,8 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QDockWidget
 
+from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI
+
 try:
     from mtg_proxy_printer.ui.generated.image_preparation_preview import Ui_ImagePreparationPreview
 except ModuleNotFoundError:
@@ -20,6 +22,8 @@ class ImagePreparationPreview(QDockWidget):
         self.setObjectName("image_preparation_preview")
         for name in ("mode_combo", "target_combo", "refresh_button", "status_label", "details_text"):
             setattr(self, name, getattr(self.ui, name))
+        for index, ppi in enumerate(SUPPORTED_TARGET_PPI):
+            self.target_combo.setItemData(index, ppi)
         self._available = True
         self._locked = False
         self.mode_combo.currentIndexChanged.connect(self._options_changed)
@@ -33,7 +37,7 @@ class ImagePreparationPreview(QDockWidget):
 
     @property
     def target_ppi(self):
-        return (600, 1200)[self.target_combo.currentIndex()]
+        return self.target_combo.currentData()
 
     def _options_changed(self, *_):
         self.update_controls()

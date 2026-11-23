@@ -56,7 +56,7 @@ def test_nested_lock_resumes_latest_options_only_at_final_release(owner_factory,
         assert disable.call_count == 1
         assert not dock.mode_combo.isEnabled()
         assert not window.ui.action_image_preparation_preview.isEnabled()
-        dock.target_combo.setCurrentIndex(1)
+        dock.target_combo.setCurrentIndex(dock.target_combo.findData(1200))
         window.ui_lock_release()
         assert not window._preview_resume_timer.isActive()
         assert not dock.refresh_button.isEnabled()

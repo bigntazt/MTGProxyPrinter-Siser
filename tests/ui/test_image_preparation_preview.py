@@ -14,6 +14,10 @@ def test_controls_are_ephemeral_and_mode_specific(qtbot):
     qtbot.addWidget(dock)
     assert dock.mode == "off"
     assert dock.target_ppi == 600
+    assert [dock.target_combo.itemData(i) for i in range(dock.target_combo.count())] == [600, 900, 1200]
+    dock.target_combo.setCurrentIndex(dock.target_combo.findData(900))
+    assert dock.target_ppi == 900
+    dock.target_combo.setCurrentIndex(dock.target_combo.findData(600))
     assert dock.mode_combo.isEnabled()
     assert not dock.target_combo.isEnabled()
     assert not dock.refresh_button.isEnabled()
@@ -23,7 +27,7 @@ def test_controls_are_ephemeral_and_mode_specific(qtbot):
     assert dock.refresh_button.isEnabled()
     dock.mode_combo.setCurrentIndex(2)
     assert dock.target_combo.isEnabled()
-    dock.target_combo.setCurrentIndex(1)
+    dock.target_combo.setCurrentIndex(dock.target_combo.findData(1200))
     assert dock.target_ppi == 1200
     dock.set_locked(True)
     assert not any(w.isEnabled() for w in (dock.mode_combo, dock.target_combo, dock.refresh_button))

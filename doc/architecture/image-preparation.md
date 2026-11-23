@@ -146,10 +146,10 @@ optimize=False and only the applicable RGB ICC profile. Source EXIF orientation,
 text, timestamps, DPI and unrelated metadata are not copied. No PNG DPI is added;
 physical placement remains canonical. Temporary Qt/Pillow images are released.
 
-| Type | Canonical | 600 target | 1200 target |
-|---|---|---|---|
-| Regular | 745 × 1040 | 1490 × 2080 | 2980 × 4160 |
-| Oversized | 1040 × 1490 | 2080 × 2980 | 4160 × 5960 |
+| Type | Canonical | 600 target | 900 target | 1200 target |
+|---|---|---|---|---|
+| Regular | 745 × 1040 | 1490 × 2080 | 2235 × 3120 | 2980 × 4160 |
+| Oversized | 1040 × 1490 | 2080 × 2980 | 3120 × 4470 | 4160 × 5960 |
 
 1200 remains an optional maximum. No nominal 63 × 88 mm recalculation is used.
 M22's research EXIF transpose and sRGB conversion are deliberately not imported
