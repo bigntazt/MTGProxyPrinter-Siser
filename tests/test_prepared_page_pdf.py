@@ -10,6 +10,7 @@ from PySide6.QtCore import QCoreApplication
 from pypdf import PdfReader
 
 from mtg_proxy_printer import prepared_page_pdf as pdf
+from mtg_proxy_printer import prepared_page_output as output
 from mtg_proxy_printer import image_processing_pillow
 from mtg_proxy_printer.document_controller.card_actions import ActionAddCard
 from mtg_proxy_printer.document_controller.page_actions import ActionNewPage
@@ -69,12 +70,12 @@ def test_real_targets_native_pdf_and_shared_physical_mapping(preview, ppi, paper
     geometry = h.scene.geometry
     tasks = len(h.tasks)
     scenes = []
-    cls = pdf.PageScene
+    cls = output.PageScene
     def observed(*args, **kwargs):
         scene = cls(*args, **kwargs)
         scenes.append(scene)
         return scene
-    with patch.object(pdf, 'PageScene', side_effect=observed), \
+    with patch.object(output, 'PageScene', side_effect=observed), \
             patch.object(QCoreApplication, 'processEvents', side_effect=AssertionError('No event boundary')):
         result = capture(h, landscape_workaround=rotate)
     assert scenes and not shiboken6.isValid(scenes[0])
@@ -183,10 +184,10 @@ def test_render_failures_release_scene_and_keep_primary_error(preview, failure, 
     h=preview
     start(h,mode='original')
     scenes=[]
-    cls=pdf.PageScene
+    cls=output.PageScene
     def make(*args,**kwargs):
         scene=cls(*args,**kwargs); scenes.append(scene); return scene
-    monkeypatch.setattr(pdf,'PageScene',make)
+    monkeypatch.setattr(output,'PageScene',make)
     if failure == 'render':
         monkeypatch.setattr(pdf,'_render_export_page',Mock(side_effect=RuntimeError('primary rendering error')))
     else:
@@ -222,6 +223,6 @@ def test_state_change_during_lookup_aborts_before_output_scene(preview,monkeypat
         h.session.refresh()
         return value
     monkeypatch.setattr(h.session,'resolve',changed)
-    with patch.object(pdf,'PageScene') as scene:
+    with patch.object(output,'PageScene') as scene:
         with pytest.raises(RuntimeError): capture(h)
         scene.assert_not_called()
