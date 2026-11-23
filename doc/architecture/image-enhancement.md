@@ -28,10 +28,10 @@ does not import or initialize any of these modules.
 
 | Existing source | Observed constraint | Later integration implication |
 | --- | --- | --- |
-| async_tasks/image_downloader.py, _fetch_and_set_image | A loaded/downloaded pixmap is scaled to the canonical blank size when dimensions differ. | Passing benchmark rasters through this path would discard target-resolution detail. Preserve acquired originals before this normalization; enhancement derivatives need a separate path. |
+| async_tasks/image_downloader.py, _fetch_and_set_image | A loaded/downloaded pixmap is scaled to the canonical blank size when dimensions differ. | Passing benchmark rasters through this path would discard target-resolution detail. Downloaded response bytes already remain in the existing disk cache; normalization changes only the pixmap. Read those originals directly; enhancement derivatives need a separate path, not another raw cache. |
 | model/imagedb.py, ImageDatabase and on_image_obtained | The current cache tracks ImageKey/pixmap entries and initializes/migrates on construction. | Do not initialize it for research. Future derivatives must not replace the existing source cache. |
 | model/imagedb_files.py, ImageKey | Keys distinguish printing identity, front/back and quality category, not enhancement recipes. | A future enhancement key needs source and checkpoint hashes plus a complete recipe identity; retain face identity. |
-| model/card.py, post_process_image | Custom images are normalized to canonical dimensions and may have corner masking applied. | Preserve raw custom sources independently. Do not route high-resolution comparisons through this normalization. |
+| model/card.py, post_process_image | Custom images are normalized to canonical dimensions and may have corner masking applied. | Use the existing source_image_file bytes directly. Do not route high-resolution comparisons through this normalization. |
 | model/card.py, requested_page_type | When an image is present, some paths infer oversized status by comparing bitmap dimensions with the canonical oversized size. | Raster pixel count must cease being the authority for physical card size before any production high-resolution payload is introduced. |
 | page_scene/items.py, _create_pixmap_item and corner/bleed construction | Graphics pixmaps and image dimensions participate in item/corner geometry. | A later design must map the high-resolution pixmap into an explicit canonical item rectangle while keeping bleed, marks, spacing and corners in existing layout units. |
 | print.py, _render_graphics_scene | The painter maps canonical scene units using output DPI divided by the existing 300-DPI resolution. | Keep that physical transform. Increasing raster detail is not a global scene-resolution change. |
@@ -90,3 +90,23 @@ provider, target selector, derivative cache, high-resolution CheckCard compositi
 or complete 600/1200-PPI export workflow. Original/Lanczos remains the baseline;
 no neural default has been selected. Later integration remains optional and
 external as described above.
+
+## M24: original source capture and resolution planning
+
+The downloader already preserves encoded original response bytes in its disk
+cache before normalizing memory pixmaps. No new raw-source preservation cache
+is required. CustomCard likewise already retains encoded source_image_file.
+This corrects the earlier preservation implication without changing M22 evidence.
+
+[Original-image sources and resolution planning](image-source-planning.md)
+describes the new read-only capture/load/plan API. Requests freeze face/quality
+identity, canonical dimensions and one path or custom byte payload. Snapshots
+hash and validate the same bytes with a versioned first-frame/no-auto-transform
+Qt policy. Explicit 600/1200 planning reports exact targets, per-axis source PPI
+and both-axis sufficiency. No production caller adopts this API in M24.
+
+SourceIdentity is logical ImageKey plus SHA-256, not a derivative-cache key.
+Physical/target dimensions and the complete decoder/color/alpha/model/resize
+recipe remain later requirements. Rendering, export, acquisition, composition,
+settings, UI and existing cache behavior are unchanged. No processing mode or
+neural default is selected.
