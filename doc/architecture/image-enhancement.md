@@ -110,3 +110,23 @@ Physical/target dimensions and the complete decoder/color/alpha/model/resize
 recipe remain later requirements. Rendering, export, acquisition, composition,
 settings, UI and existing cache behavior are unchanged. No processing mode or
 neural default is selected.
+
+## M25: inactive processed-image identity and cache
+
+[Processed-image identity and cache](image-derivative-cache.md) specifies a frozen
+canonical recipe/request contract and a separate explicit-root PNG cache. The
+request includes original content/face/quality identity, source-inspection
+provenance, physical/target dimensions and the complete declared processing
+recipe. Lookup checks the manifest against that independently built request and
+returns the same immutable PNG bytes it validated.
+
+Store validates completed target-sized PNG bytes before publishing a hash-named
+blob and then an atomic manifest commit. Last successful manifest wins; old and
+orphan blobs remain for coherent readers. Cache integrity does not establish
+image fidelity or producer compliance. Real provider builders still must declare
+all applicable settings.
+
+No production caller adopts this backend. Originals, M24 inspection, M23 geometry,
+settings, rendering, export and existing cache behavior are unchanged. There is
+no provider execution, processing, in-flight deduplication, retention/cleanup,
+neural default or M26 integration. M22 benchmark artifacts remain research only.
