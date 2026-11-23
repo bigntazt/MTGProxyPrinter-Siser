@@ -30,6 +30,8 @@ def test_numeric_actions_available_for_original_without_changing_source_target(p
     assert not any(action.isEnabled() for action in actions)
     start(h,mode='original',ppi=900)
     assert all(action.isEnabled() for action in actions) and not h.dock.target_combo.isEnabled()
+    assert window.ui.menu_export_prepared_png.isEnabled()
+    assert window.ui.menu_export_prepared_png.menuAction().isEnabled()
     result=small_result(h,ppi)
     task_count=len(h.tasks)
     with patch.object(main_window,'capture_prepared_page_png',return_value=result) as prepare:

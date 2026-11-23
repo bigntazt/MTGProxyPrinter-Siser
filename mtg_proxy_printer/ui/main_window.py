@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
     def _update_prepared_pdf_action(self):
         available = self._prepared_pdf_available()
         self.ui.action_export_prepared_page_pdf.setEnabled(available)
-        self.ui.menu_export_prepared_png.menuAction().setEnabled(available)
+        self.ui.menu_export_prepared_png.setEnabled(available)
         for action in self._prepared_png_actions:
             action.setEnabled(available)
 
