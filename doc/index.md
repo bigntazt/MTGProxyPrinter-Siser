@@ -43,3 +43,8 @@ prepared PDF. Cancel closes without saving. See [PNG limits and behavior](archit
 M33 adds a separately invoked experimental RGB8 worker, with no application UI or
 normal startup dependency. Original/Lanczos remain the baseline. See the
 [worker protocol and inactive integration boundary](architecture/neural-worker.md).
+
+The [explicit neural worker client](architecture/neural-worker-client.md) adds
+process ownership and verified native RGB results for a future adapter. It remains
+inactive in the application; decoding, alpha/color, target resizing and caching
+are separate M35 work.

@@ -134,3 +134,12 @@ a timeout/kill/wait test. Actual CUDA compatibility additionally requires the
 private two-request proof; inert tests alone do not qualify the runtime.
 
 See [architecture and M34 boundary](../../doc/architecture/neural-worker.md).
+
+## Explicit host client (M34)
+
+The [inactive host client](../../doc/architecture/neural-worker-client.md) owns
+validated readiness, bounded communication, deadlines, termination/reaping and
+private-session cleanup. It generates lowercase UUID hex IDs. Worker v1 now
+explicitly decodes UTF-8 request bytes and rejects UTF-16/32; historical M33 proof
+fingerprints are retained separately. No application caller or image policy is
+introduced; source/final-target/cache integration remains M35.

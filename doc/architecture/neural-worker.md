@@ -94,3 +94,12 @@ not pretending an in-band message interrupts CUDA. Cleanup/retention, UI selecti
 installation/distribution and model quality decisions require separate work.
 
 No M34 caller, adapter or cache adoption is included in M33.
+
+## M34 follow-up (inactive host)
+
+The [explicit host client](neural-worker-client.md) now implements the separately
+authorized process ownership and verification boundary. Protocol v1 explicitly
+decodes UTF-8 requests; UTF-16/32 are rejected. The host generates lowercase UUID
+hex IDs to avoid case-variant filenames. M33 evidence above remains historical;
+M34 records a new actual-file fingerprint. Source/alpha/color/final-target/cache
+bridging remains M35, batch/session adoption M36, experimental UI/output M37.
