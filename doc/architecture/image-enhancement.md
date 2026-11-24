@@ -1,13 +1,13 @@
 # Optional image enhancement: M22 architecture decision
 
-**Current status (M32):** the normal main-page preview now optionally adopts the
+**Current status (M33):** the normal main-page preview now optionally adopts the
 accepted Original/Lanczos pipeline through an ephemeral dock. See
 [Main-page image preparation preview](prepared-image-preview.md). Printing, print
 preview and regular PDF/PNG retain their existing paths. An explicit
 [prepared current-page PDF](prepared-page-pdf.md) command captures completed results
 for immutable saving. [Prepared current-page PNG](prepared-page-png.md) uses the same
 capture/save contract with separate page output PPI and white RGB paper. Targets are 600/900/1200; document serialization and physical
-geometry remain unchanged. Neural providers remain deferred. The sections below retain milestone scope
+geometry remain unchanged. A standalone [optional neural worker](neural-worker.md) has no application caller; neural adoption remains deferred. The sections below retain milestone scope
 and historical research decisions; they do not imply output adoption.
 
 M22 adds standalone research tooling only. It does not change application dependencies,
@@ -250,3 +250,12 @@ Direct white RGB888 rendering has its own aligned 512 MiB page-raster cap; it st
 synchronous through encoding, with measured temporary UI pauses. Captured bytes and
 page-only accounting remain immutable. Ordinary output paths and physical geometry
 are unchanged; multipage/native adoption remains separate.
+
+## M33: standalone optional neural worker
+
+The optional process validates pinned Compact safetensors bytes and normalized RGB8
+files, performs one native 2x CUDA FP32 pass and publishes RGB8 results/provenance.
+A bounded sequential JSON-lines protocol retains one model, with session binding
+and no in-band active-job cancellation. Real two-request inference is technical
+compatibility evidence only. No application caller, decoder, alpha policy, target
+resize, cache adoption or neural default is introduced. See [worker boundary](neural-worker.md).

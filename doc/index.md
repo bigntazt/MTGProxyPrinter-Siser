@@ -37,3 +37,9 @@ pixel dimensions and white background, then Save PNG. This page resolution does
 not change the prepared source pixels or restore missing detail. Large pages pause
 the UI during rendering/encoding; an over-budget canvas can use lower PNG PPI or
 prepared PDF. Cancel closes without saving. See [PNG limits and behavior](architecture/prepared-page-png.md).
+
+## Optional neural worker (standalone)
+
+M33 adds a separately invoked experimental RGB8 worker, with no application UI or
+normal startup dependency. Original/Lanczos remain the baseline. See the
+[worker protocol and inactive integration boundary](architecture/neural-worker.md).
