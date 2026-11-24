@@ -62,6 +62,16 @@ class ProtocolTests(unittest.TestCase):
                      b'{"protocol":1,"value":NaN}', b'\xff'):
             with self.subTest(line=line), self.assertRaises(p.Rejected): p.parse_line(line)
 
+    def test_utf16_be_request_is_invalid_json(self):
+        with self.assertRaises(p.Rejected) as raised:
+            p.parse_line('{"protocol":1,"type":"shutdown","id":"stop"}'.encode('utf-16-be'))
+        self.assertEqual(raised.exception.code, 'invalid_json')
+
+    def test_utf32_be_request_is_invalid_json(self):
+        with self.assertRaises(p.Rejected) as raised:
+            p.parse_line('{"protocol":1,"type":"shutdown","id":"stop"}'.encode('utf-32-be'))
+        self.assertEqual(raised.exception.code, 'invalid_json')
+
     def test_id_grammar(self):
         for value in (None, True, 1, "", "../x", "/x", "a.b", "-a", "x"*65, "é"):
             with self.subTest(value=value), self.assertRaises(p.Rejected): p.request_id({"id": value})

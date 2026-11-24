@@ -37,7 +37,7 @@ def parse_line(line):
         return result
 
     try:
-        record = json.loads(line, object_pairs_hook=pairs,
+        record = json.loads(line.decode("utf-8"), object_pairs_hook=pairs,
                             parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Nonfinite JSON")))
     except (ValueError, UnicodeError, RecursionError) as error:
         raise Rejected("invalid_json", "Expected one strict UTF-8 JSON object") from error
