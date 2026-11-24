@@ -322,6 +322,11 @@ class NeuralWorkerSession:
         except (OSError, ValueError):
             pass  # Closing pipes during resolved process teardown is expected.
 
+    def _check_deadline(self, deadline):
+        self._check_cancel()
+        if time.monotonic() >= deadline:
+            raise NeuralWorkerError("timeout", "Operation deadline expired before acceptance")
+
     def _pause(self, deadline):
         self._check_cancel()
         remaining = deadline - time.monotonic()
@@ -393,7 +398,12 @@ class NeuralWorkerSession:
 
     def start(self):
         self._check_owner()
-        if self._state == "idle": return self.ready
+        if self._state == "idle":
+            try:
+                self._check_cancel(); self._quiet()
+                return self.ready
+            except Exception as error:
+                self._fail(error if isinstance(error, NeuralWorkerError) else NeuralWorkerError("worker_unavailable", error))
         if self._state != "new":
             raise NeuralWorkerError("session_state", "Session cannot be started/restarted")
         self._state = "starting"
@@ -423,6 +433,7 @@ class NeuralWorkerSession:
             self._ready = _validate_ready(record, hashes, self.config)
             self._check_cancel(); self._quiet()
             self._state = "idle"
+            self._check_deadline(deadline)
             return self.ready
         except Exception as error:
             self._fail(error if isinstance(error, NeuralWorkerError) else NeuralWorkerError("worker_unavailable", error))
@@ -493,7 +504,7 @@ class NeuralWorkerSession:
             self._state = "idle"
             result = NativeRGBResult(data, width * 2, height * 2, digest, output["sha256"], self.ready.fingerprint,
                                      self.ready.provenance_json, self.ready.session_token, identifier, timings)
-            self._check_cancel()  # Last acceptance boundary, after owning validated bytes and releasing files.
+            self._check_deadline(deadline)  # Final cancellation/deadline boundary after validation and file release.
             return result
         except NeuralWorkerError as error:
             if error.reason == "worker_rejected" and self._state == "idle": raise

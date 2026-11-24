@@ -289,4 +289,79 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(raised.exception.reason,'protocol_error');self.cleaned(session)
 
 
+    def assert_unusable(self,session):
+        with self.assertRaises(c.NeuralWorkerError) as raised:session.start()
+        self.assertEqual(raised.exception.reason,'session_state')
+        with self.assertRaises(c.NeuralWorkerError):session.infer(b'abc',1,1)
+
+    def retire_regression_fixture(self,session,event=None):
+        # Before-fix assertion failures must not leave the deliberately unhealthy child alive.
+        if event is not None:event.clear()
+        try:session.close()
+        except c.NeuralWorkerError:pass
+
+    def test_repeated_idle_start_after_cancellation_cleans_and_fails(self):
+        event=threading.Event();session=self.make(event=event);session.start();event.set()
+        try:
+            with self.assertRaises(c.NeuralWorkerCancelled):session.start()
+            self.cleaned(session);self.assert_unusable(session)
+        finally:self.retire_regression_fixture(session,event)
+
+    def test_repeated_idle_start_after_worker_exit_cleans_and_fails(self):
+        session=self.make();session.start()
+        session._process.terminate();session._process.wait(timeout=2)
+        self.assertTrue(session._stdout_eof.wait(2))
+        try:
+            with self.assertRaises(c.NeuralWorkerError) as raised:session.start()
+            self.assertEqual(raised.exception.reason,'worker_unavailable')
+            self.cleaned(session);self.assert_unusable(session)
+        finally:self.retire_regression_fixture(session)
+
+    def test_repeated_idle_start_after_detected_traffic_fault_cleans_and_fails(self):
+        session=self.make();session.start();session._faulted('injected detected idle fault')
+        try:
+            with self.assertRaises(c.NeuralWorkerError) as raised:session.start()
+            self.assertEqual(raised.exception.reason,'protocol_error')
+            self.cleaned(session);self.assert_unusable(session)
+        finally:self.retire_regression_fixture(session)
+
+    def test_startup_validation_expiring_deadline_cannot_return_ready(self):
+        session=self.make();real_clock=time.monotonic;offset=[0.0];validated=[]
+        original=c._validate_ready
+        def validate_then_expire(*args):
+            value=original(*args)  # A complete in-time response passed all readiness validation.
+            validated.append(True);offset[0]=session.config.startup_timeout+1
+            return value
+        try:
+            with patch.object(c.time,'monotonic',side_effect=lambda:real_clock()+offset[0]), \
+                 patch.object(c,'_validate_ready',side_effect=validate_then_expire):
+                with self.assertRaises(c.NeuralWorkerError) as raised:session.start()
+            self.assertEqual(validated,[True]);self.assertEqual(raised.exception.reason,'timeout')
+            self.cleaned(session);self.assert_unusable(session)
+        finally:self.retire_regression_fixture(session)
+
+    def test_output_validation_expiring_deadline_cannot_return_result(self):
+        session=self.make();session.start();real_clock=time.monotonic;offset=[0.0];validated=[]
+        original=c._hash
+        def hash_then_expire(data):
+            value=original(data)
+            if data==b'\x10\x20\x30'*4:
+                validated.append(True);offset[0]=session.config.inference_timeout+1
+            return value
+        try:
+            with patch.object(c.time,'monotonic',side_effect=lambda:real_clock()+offset[0]), \
+                 patch.object(c,'_hash',side_effect=hash_then_expire):
+                with self.assertRaises(c.NeuralWorkerError) as raised:session.infer(b'abc',1,1)
+            self.assertEqual(validated,[True]);self.assertEqual(raised.exception.reason,'timeout')
+            self.cleaned(session);self.assert_unusable(session)
+        finally:self.retire_regression_fixture(session)
+
+    def test_healthy_repeated_start_does_not_reuse_completed_startup_deadline(self):
+        session=self.make();ready=session.start();pid=session._process.pid;real_clock=time.monotonic
+        with patch.object(c.time,'monotonic',side_effect=lambda:real_clock()+session.config.startup_timeout+100):
+            self.assertIs(session.start(),ready)
+        self.assertEqual(session._process.pid,pid)
+        session.close();self.cleaned(session)
+
+
 if __name__=='__main__':unittest.main()

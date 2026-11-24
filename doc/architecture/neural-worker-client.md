@@ -31,7 +31,9 @@ thread. Another thread may set the cancellation Event, matching the existing
 batch's cancellation signal type without adopting/changing that batch.
 
 `start()` returns frozen NeuralWorkerReady and may be repeated while idle without
-launching another process. One worker/model serves multiple sequential calls;
+launching another process. Each repeated idle start checks current cancellation,
+worker health and detected traffic faults through the failure/cleanup path; it does
+not reuse the completed startup deadline. One worker/model serves multiple sequential calls;
 there is at most one outstanding request. A closed, failed or cancelled session
 cannot restart. There is no retry, restart, model substitution or fallback.
 
@@ -67,9 +69,12 @@ a blocked/failed stdin write cannot block the owner's wait indefinitely. Complet
 writer references are replaced, not accumulated across jobs.
 
 Owner waits use monotonic absolute deadlines. Partial bytes and diagnostic traffic
-do not renew them; cancellation is observed at most every 50 ms during waits.
+do not renew them; the original deadline is also checked before accepting readiness
+or a validated result. Cancellation is observed at most every 50 ms during waits.
 There are no owner-path blocking pipe reads or select() assumptions for Windows
 pipes. This polling interval is not a bound on OS creation, file I/O or teardown.
+Synchronous validation/file operations are not interrupted, but once control returns
+an already-expired operation cannot succeed. Teardown retains its separate budgets.
 
 | Operation | Default seconds |
 |---|---:|
