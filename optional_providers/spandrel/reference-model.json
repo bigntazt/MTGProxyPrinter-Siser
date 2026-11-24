@@ -1,0 +1,18 @@
+{
+  "id": "nomos_compact_2x",
+  "name": "NomosUni Compact multijpg LDL (experimental technical reference)",
+  "filename": "2xNomosUni_compact_multijpg_ldl.safetensors",
+  "sha256": "dec25af2672783ce2214c38d6a70caf8c3d8a640d6f4d87b543b264cafd74110",
+  "bytes": 2406816,
+  "architecture": "Compact",
+  "scale": 2,
+  "input_channels": 3,
+  "output_channels": 3,
+  "author": "Philip Hofmann",
+  "release": "https://github.com/Phhofm/models/releases/tag/2xNomosUni_compact_multijpg_ldl",
+  "weight_license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "hash_claim": "Local acquisition pin, not a publisher-verified checksum",
+  "code_license": "MIT Spandrel implementation; upstream SRVGG/Real-ESRGAN BSD-3-Clause",
+  "distribution": "No weights bundled. Retain attribution and review pretrained lineage before redistribution."
+}
