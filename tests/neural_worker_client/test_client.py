@@ -74,7 +74,7 @@ class ClientTests(unittest.TestCase):
         self.assertTrue(all(re.fullmatch('[0-9a-f]{32}',v) for v in ids))
 
     def test_config_rejects_invalid_deadlines_and_configuration(self):
-        for value in (True,0,-1,float('inf'),float('nan'),'1',None):
+        for value in (True,0,-1,float('inf'),float('nan'),10**1000,'1',None):
             for field in ('startup_timeout','inference_timeout','shutdown_timeout','terminate_timeout','kill_timeout'):
                 with self.subTest(value=value,field=field),self.assertRaises(c.NeuralWorkerError):replace(self.config,**{field:value})
         for changes in ({'device':'cpu'},{'expected_sha256':'0'*64},{'model_id':'other'},{'private_parent':Path('relative')}):

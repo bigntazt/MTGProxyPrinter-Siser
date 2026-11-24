@@ -73,7 +73,11 @@ class NeuralWorkerConfig:
             raise NeuralWorkerError("invalid_config", "Require explicit pinned Compact worker.py on cuda:0")
         for name in ("startup_timeout", "inference_timeout", "shutdown_timeout", "terminate_timeout", "kill_timeout"):
             value = getattr(self, name)
-            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+            try:
+                valid = type(value) in (int, float) and math.isfinite(value) and value > 0
+            except OverflowError:
+                valid = False
+            if not valid:
                 raise NeuralWorkerError("invalid_config", f"{name} must be positive and finite")
 
 
