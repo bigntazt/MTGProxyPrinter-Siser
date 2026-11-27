@@ -233,3 +233,77 @@ def test_first_migrated_refresh_uses_printing_links(old_db, monkeypatch, reverse
         assert rows(db, "SELECT printing_id,set_id FROM Printing WHERE printing_id IN(45,46) ORDER BY printing_id") == [
             (45, 41), (46, 42)]
         assert not rows(db, "PRAGMA foreign_key_check")
+
+
+@pytest.mark.parametrize("failure", ["count", "missing-file", "consumer", "cancel"])
+def test_stream_startup_and_abandonment(card_db, tmp_path, monkeypatch, failure):
+    from PySide6.QtCore import Qt
+
+    db = card_db.db
+    db.row_factory = None
+    db.commit()
+    before = list(db.iterdump())
+    card = load_json("regular_english_card")
+    line = json.dumps(card).encode() + b"\n"
+    if failure == "missing-file":
+        path = tmp_path / "bulk.jsonl"
+        path.write_bytes(line)
+        source = download.FileStreamTask(path)
+        path.unlink()
+    else:
+        source = download.ApiStreamTask("fixture")
+        source._batch_size = 1
+        payload = line * 20
+        if failure == "consumer":
+            payload = b'{"invalid":"printing"}\n' + payload
+        monkeypatch.setattr(source, "read_from_url", lambda url: (io.BytesIO(payload), None))
+        count = {} if failure == "count" else {"total_cards": 20}
+        monkeypatch.setattr(source, "read_json_from_url", lambda url: count)
+    task = download.DatabaseImportTask(source, db, ":memory:")
+    waiting_to_put = threading.Event()
+    wait_for_space = source.queue.not_full.wait
+
+    def blocked_put(timeout=None):
+        waiting_to_put.set()
+        return wait_for_space(timeout)
+
+    monkeypatch.setattr(source.queue.not_full, "wait", blocked_put)
+    errors, finished, escaped = [], [], []
+    task.error_occurred.connect(errors.append, Qt.ConnectionType.DirectConnection)
+    for name, job in (("source", source), ("import", task)):
+        job.task_completed.connect(lambda n=name: finished.append(n), Qt.ConnectionType.DirectConnection)
+
+    def run(job):
+        try:
+            job.run()
+        except Exception as error:
+            escaped.append(error)
+
+    sender = threading.Thread(target=run, args=(source,), daemon=True)
+    reader = threading.Thread(target=run, args=(task,), daemon=True)
+    sender.start()
+    try:
+        if failure != "missing-file":
+            assert waiting_to_put.wait(3) and source.queue.full()
+        if failure == "cancel":
+            task.cancel()
+        reader.start()
+        reader.join(3)
+        sender.join(3)
+        assert not reader.is_alive() and not sender.is_alive()
+        assert not escaped and sorted(finished) == ["import", "source"]
+        assert source.queue.empty()
+        assert bool(errors) == (failure != "cancel")
+        assert list(db.iterdump()) == before
+    finally:
+        source.cancel()
+        sender.join(2)
+
+    retry = download.ApiStreamTask("fixture")
+    monkeypatch.setattr(retry, "get_available_card_count", lambda: 1)
+    monkeypatch.setattr(retry, "read_from_url", lambda url: (io.BytesIO(line), None))
+    monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
+    retry_task = download.DatabaseImportTask(retry, db, ":memory:")
+    retry.run()
+    retry_task.run()
+    assert rows(db, "SELECT scryfall_id FROM Printing") == [(card["id"],)]

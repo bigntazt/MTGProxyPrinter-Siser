@@ -187,6 +187,13 @@ class StreamTask(CardInfoDownloadTaskBase):
             except queue.Full:
                 continue
 
+    def _discard_pending(self):
+        while True:
+            try:
+                self.queue.get_nowait()
+            except queue.Empty:
+                return
+
     def _enqueue_stream(self, data: CardStream):
         """Put the CardStream into the queue for downstream consumption"""
         try:
@@ -194,10 +201,16 @@ class StreamTask(CardInfoDownloadTaskBase):
                 if self.cancelled.is_set():
                     return
                 self._put(batch)
+                if self.cancelled.is_set():
+                    return
         except Exception as error:
             self._put(error)
         else:
             self._put(None)
+        finally:
+            if self.cancelled.is_set():
+                self._discard_pending()  # A blocked put may have finished during cancel().
+            self.task_completed.emit()
 
     @property
     def report_progress(self):
@@ -215,12 +228,9 @@ class StreamTask(CardInfoDownloadTaskBase):
     def cancel(self):
         logger.debug(f"{self.__class__.__name__}: entering cancel()")
         self.cancelled.set()
+        self._discard_pending()
         if self.open_file is not None:
             self.open_file.close()
-        try:
-            self.queue.put_nowait(None)  # Wake a waiting reader.
-        except queue.Full:
-            pass  # The reader already has work and will see the cancellation flag.
         logger.debug(f"{self.__class__.__name__}: Cancel completed")
 
 
@@ -528,7 +538,12 @@ class DatabaseImportTask(AsyncTask):
 
     def _consume_from_queue(self) -> CardStream:
         while True:
-            batch = self.source.queue.get()
+            if self.source.cancelled.is_set():
+                raise StreamCancelled
+            try:
+                batch = self.source.queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
             if self.source.cancelled.is_set():
                 raise StreamCancelled
             if batch is None:
@@ -551,37 +566,27 @@ class DatabaseImportTask(AsyncTask):
 
     @with_database_write_lock()
     def run(self):
-        item_count = self.source.item_count
-        file_task = isinstance(self.source, FileStreamTask)
-        if file_task:
-            logger.info("About to import card data from a local file on disk")
-            self.task_begins.emit(
-                item_count,
-                self.tr("Import card data from File:", "Progress bar label text"))
-        else:
-            logger.info("About to import card data from Scryfall")
-            self.task_begins.emit(
-                item_count,
-                self.tr("Update card data from Scryfall:", "Progress bar label text"))
         try:
-            items = self._consume_from_queue()
-            self.populate_database(items, total_count=item_count)
-        except Exception as e:
-            self.db.rollback()
-            if file_task:
-                logger.exception(
-                    f"Error during import from file: {self.source.source}")
-                self.error_occurred.emit(self.tr(
-                    "Error during import from file:\n{path}",
-                    "Error message shown in a message box").format(path=self.source.source))
-            else:
-                logger.exception(
-                    f"Error during import from Scryfall: {e}")
-                self.error_occurred.emit(self.tr(
-                    "Error during update from Scryfall", "Error message shown in a message box"))
+            if self.source.cancelled.is_set():
+                return
+            count = self.source.item_count
+            label = (self.tr("Import card data from File:", "Progress bar label text")
+                     if isinstance(self.source, FileStreamTask)
+                     else self.tr("Update card data from Scryfall:", "Progress bar label text"))
+            self.task_begins.emit(count, label)
+            self._populate_database(self._consume_from_queue(), total_count=count)
+        except StreamCancelled:
+            if self._db is not None:
+                self._db.rollback()
+        except Exception as error:
+            self.source.cancel()
+            if self._db is not None:
+                self._db.rollback()
+            logger.exception("Card catalog import failed")
+            self.error_occurred.emit(self.tr("Card catalog import failed: {error}").format(error=error))
         finally:
-            if self.db_created:
-                self.db.close()
+            if self.db_created and self._db is not None:
+                self._db.close()
                 self._db = None
             self.task_completed.emit()
 
@@ -692,7 +697,6 @@ class DatabaseImportTask(AsyncTask):
             db.commit()
         else:
             db.rollback()
-        self.task_completed.emit()
         return index
 
     @functools.cache
