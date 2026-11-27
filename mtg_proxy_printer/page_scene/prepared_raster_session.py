@@ -2,6 +2,7 @@
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+import re
 
 from PySide6.QtCore import QObject, QModelIndex, QPersistentModelIndex, QTimer, Qt, Signal, Slot
 
@@ -18,6 +19,9 @@ from mtg_proxy_printer.page_scene.prepared_pixmap import (
     PreparedPixmap, RasterDecodeFailure, decode_prepared_pixmap, require_gui_thread,
 )
 from mtg_proxy_printer.units_and_sizes import UUID
+from mtg_proxy_printer.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -119,9 +123,16 @@ def _card_metadata(card):
 
 
 def _public_worker_detail(detail, config):
-    """Keep configured worker locations out of published/output diagnostic metadata."""
+    """Keep OS-spelled worker paths private without probing the filesystem."""
     if config is None:
         return detail
+    if detail:
+        logger.debug("Neural preparation operational detail: %s", detail)
+    # OS errors may canonicalize case/.. and append an owned child directory.
+    # Strip the complete absolute Windows filename, not just the entered prefix.
+    detail = re.sub(r"""(?i)(['"])(?:[a-z]:[\\/]|\\\\)[^\r\n]*?\1""", "<private path>", detail)
+    # A truncated or unquoted path has no reliable end when spaces are allowed.
+    detail = re.sub(r"(?i)(?:\b[a-z]:[\\/]|\\\\)[^\r\n]*", "<private path>", detail)
     locations = [(config.interpreter, "<worker Python>"), (config.worker_script, "<worker.py>"),
                  (config.worker_script.parent, "<worker bundle>"), (config.checkpoint, "<checkpoint>"),
                  (config.private_parent, "<private work directory>")]

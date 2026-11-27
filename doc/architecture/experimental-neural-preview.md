@@ -31,6 +31,10 @@ CUDA 12.8 / FP32; a matching separate environment and accepted checkpoint must b
 provided by the user. Setup saves metadata in memory only, retaining choices
 across Off/hide and later explicit requests in that window. It does not persist
 settings or redistribute model bytes. Cancel retains the last accepted choices.
+Saving setup while Off, Original or Lanczos is selected only remembers the config;
+it preserves the current generation, running/cancelled state and export readiness.
+Saving while Neural is selected still invalidates that selection, including at the
+same PPI, through the existing stale-generation boundary.
 Path existence, bundle/model hashing, runtime checks and inference occur in the
 background task, not in the setup dialog.
 
@@ -49,7 +53,9 @@ Alias occurrences count once each without another inference or retained-raster
 charge. Terminal failure details are bounded and displayed. Configured worker
 locations are replaced by descriptive placeholders in published/output diagnostics;
 no worker configuration object or paths are added to captured output metadata.
-Private task logs retain operational diagnostics.
+Private logs retain raw operational diagnostics. Public Windows filename redaction
+also covers OS-reported capitalization, resolved parent components and derived
+worker directories, without probing their filesystem paths on the GUI thread.
 
 The model performs one whole-image native 2× pass, then conventional resizing
 when necessary to reach the card target. A 1200-PPI target is not native 4× detail.

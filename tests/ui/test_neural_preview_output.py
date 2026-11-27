@@ -220,7 +220,8 @@ def test_worker_paths_are_not_carried_into_captured_metadata(preview, setup, mon
     neural_ready(h, config)
     result = pdf.capture_prepared_page_pdf(h.document, h.session, mode='neural', target_ppi=600)
     text = '\n'.join(d.detail for d in result.diagnostics)
-    assert '<worker bundle>' in text and '<worker Python>' in text and '<checkpoint>' in text
+    assert '<private path>' in text and 'Cannot open' in text
+    assert all(d.reason == 'provider_unavailable' for d in result.diagnostics)
     assert all(str(value) not in text for value in (config.worker_script.parent, config.interpreter, config.checkpoint))
 
 

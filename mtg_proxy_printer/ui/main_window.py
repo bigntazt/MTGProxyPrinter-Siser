@@ -310,7 +310,8 @@ class MainWindow(QMainWindow):
         dialog = self._neural_setup_dialog = NeuralWorkerSetup(self._neural_worker_config, self)
         def accepted():
             self._neural_worker_config = dialog.config
-            self._apply_preview_options()
+            if self.image_preparation_preview.mode == "neural":
+                self._apply_preview_options()
         dialog.accepted.connect(accepted)
         dialog.finished.connect(lambda *_: setattr(self, "_neural_setup_dialog", None))
         dialog.open()
