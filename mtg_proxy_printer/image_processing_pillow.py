@@ -60,6 +60,18 @@ def _rgb_profile(image: QImage) -> bytes | None:
     return profile
 
 
+def decode_source_rgba(snapshot: SourceSnapshot) -> tuple[QImage, bytes | None]:
+    """Shared production decode policy, without Pillow discovery or source reopening."""
+    image = _decode_source(snapshot)
+    if image.format() not in SUPPORTED_FORMATS:
+        raise ProcessingFailure("unsupported_source", "Unsupported Qt decoded format: " + image.format().name)
+    profile = _rgb_profile(image)
+    rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
+    if rgba.isNull():
+        raise ProcessingFailure("processing_failed", "Straight RGBA8888 normalization failed")
+    return rgba, profile
+
+
 @dataclass(frozen=True)
 class PillowRuntime:
     """One resolved runtime used for both identity and production, never in results."""
@@ -100,13 +112,7 @@ class PillowRuntime:
         })
 
     def produce_png(self, snapshot: SourceSnapshot, target_dimensions: tuple[int, int]) -> bytes:
-        image = _decode_source(snapshot)
-        if image.format() not in SUPPORTED_FORMATS:
-            raise ProcessingFailure("unsupported_source", "Unsupported Qt decoded format: " + image.format().name)
-        profile = _rgb_profile(image)
-        rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
-        if rgba.isNull():
-            raise ProcessingFailure("processing_failed", "Straight RGBA8888 normalization failed")
+        rgba, profile = decode_source_rgba(snapshot)
         try:
             # frombytes copies the straight samples using Qt's actual row stride.
             with self.image_module.frombytes("RGBA", (rgba.width(), rgba.height()), bytes(rgba.constBits()),
