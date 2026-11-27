@@ -795,23 +795,40 @@ class DatabaseImportTask(AsyncTask):
         db = self.db
         by_row = {}
         by_uuid = {}
+        incoming = set()
         # An existing printing may arrive after many new ones from its set.
         # Replay only on a migrated catalog, keeping bulk data off the Python heap.
         with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as staged:
             for card in cards:
                 if not self.should_run:
                     raise StreamCancelled
+                printing_uuid, set_uuid = card.get("id"), card.get("set_id")
                 if not _should_skip_card(card):
+                    incoming.add((set_uuid, card["set"]))
+                # Image eligibility affects rendering, not historical set membership.
+                if (isinstance(printing_uuid, str) and UUID.uuid_re.fullmatch(printing_uuid)
+                        and isinstance(set_uuid, str) and UUID.uuid_re.fullmatch(set_uuid)):
                     linked = db.execute("""
                         SELECT s.set_id FROM Printing p JOIN MTGSet s ON s.set_id=p.set_id
                         WHERE p.scryfall_id=? AND s.set_scryfall_id=s.set_code
-                    """, (card["id"],)).fetchone()
+                    """, (printing_uuid,)).fetchone()
                     if linked:
-                        row, uuid = linked[0], card["set_id"]
+                        row, uuid = linked[0], set_uuid
                         if by_row.setdefault(row, uuid) != uuid or by_uuid.setdefault(uuid, row) != row:
                             raise ValueError("Ambiguous set identity in migrated printing links")
                 staged.write(json.dumps(card, separators=(",", ":")) + "\n")
             db.executemany("UPDATE MTGSet SET set_scryfall_id=? WHERE set_id=?", by_uuid.items())
+            stored = dict(db.execute("SELECT set_scryfall_id,set_code FROM MTGSet"))
+            placeholders = {code for uuid, code in stored.items() if uuid == code}
+            unidentified = {(uuid, code) for uuid, code in incoming if uuid not in stored}
+            if placeholders and unidentified:
+                if len(placeholders) != 1 or len(unidentified) != 1:
+                    raise ValueError("Ambiguous migrated set assignment: identifying printings are missing")
+                uuid, code = unidentified.pop()
+                if code not in placeholders:
+                    raise ValueError("Ambiguous migrated set rename: identifying printings are missing")
+                db.execute("UPDATE MTGSet SET set_scryfall_id=? WHERE set_scryfall_id=set_code AND set_code=?",
+                           (uuid, code))
             staged.seek(0)
             yield from map(json.loads, staged)
 
@@ -820,9 +837,6 @@ class DatabaseImportTask(AsyncTask):
         code, uuid = card["set"], card["set_id"]
         owner = db.execute("SELECT set_id, set_scryfall_id FROM MTGSet WHERE set_code=?", (code,)).fetchone()
         row = db.execute("SELECT set_id FROM MTGSet WHERE set_scryfall_id=?", (uuid,)).fetchone()
-        if row is None and owner and owner[1] == code:
-            # Schema 34 used the set code as a placeholder until the first refresh.
-            row = (owner[0],)
         # SQLite checks UNIQUE immediately. A blob cannot collide with any text code.
         # Resolve this temporary value once all existing owners have had a chance to move.
         deferred = owner is not None and (row is None or row[0] != owner[0])

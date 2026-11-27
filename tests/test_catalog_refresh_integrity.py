@@ -186,8 +186,8 @@ def test_http_eof_at_record_boundary(card_db, monkeypatch, truncated):
 
 
 @pytest.mark.parametrize("reverse", [False, True])
-@pytest.mark.parametrize("ambiguous", [False, True])
-def test_first_migrated_refresh_uses_printing_links(old_db, monkeypatch, reverse, ambiguous):
+@pytest.mark.parametrize("feed", ["complete", "conflicting", "missing-images", "partial", "disk-full"])
+def test_first_migrated_refresh_uses_printing_links(old_db, monkeypatch, reverse, feed):
     a = load_json("regular_english_card")
     b = dict(a, set="bee", set_id=str(UUID(int=2)), id=str(UUID(int=3)))
     catalog = CardDatabase(old_db, register_exit_hooks=False)
@@ -212,26 +212,42 @@ def test_first_migrated_refresh_uses_printing_links(old_db, monkeypatch, reverse
     db.commit()
     before = list(db.iterdump())
     cards = [dict(a, set=b["set"]), dict(b, set=a["set"])]
-    if ambiguous:
+    if feed == 'conflicting':
         cards[1].update(set_id=a["set_id"], set=b["set"])
     if reverse:
         cards.reverse()
     # The first incoming printing for each UUID need not already be in the catalog.
     new_cards = [dict(card, id=str(UUID(int=100+i))) for i, card in enumerate(cards)]
+    if feed == "missing-images":
+        cards = [dict(card, image_status="missing") for card in cards]
+    elif feed == "partial":
+        cards = []
+    elif feed == "disk-full":
+        class FullDisk(io.StringIO):
+            def write(self, text):
+                raise OSError("disk full")
+        staged = FullDisk()
+        monkeypatch.setattr(download.tempfile, "TemporaryFile", lambda **kwargs: staged)
     monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
     for _ in range(2):
         importer = download.DatabaseImportTask(MagicMock(), db, ":memory:")
         errors = []
         importer.error_occurred.connect(errors.append)
         importer.populate_database(new_cards + cards)
-        if ambiguous:
-            assert errors and list(db.iterdump()) == before
+        if feed in ('partial', 'conflicting', 'disk-full'):
+            assert len(errors) == 1 and list(db.iterdump()) == before
+            if feed == 'disk-full':
+                assert staged.closed and 'disk full' in errors[0]
+            else:
+                assert 'ambiguous' in errors[0].lower()
             break
         assert not errors
         assert rows(db, "SELECT set_id,set_code,set_scryfall_id,set_preference_weight FROM MTGSet ORDER BY set_id") == [
             (41, b["set"], a["set_id"], 41), (42, a["set"], b["set_id"], 42)]
         assert rows(db, "SELECT printing_id,set_id FROM Printing WHERE printing_id IN(45,46) ORDER BY printing_id") == [
             (45, 41), (46, 42)]
+        assert rows(db, "SELECT scryfall_id,set_id FROM Printing WHERE printing_id>46 ORDER BY scryfall_id") == [
+            (card["id"], 41 if card["set_id"] == a["set_id"] else 42) for card in new_cards]
         assert not rows(db, "PRAGMA foreign_key_check")
 
 
