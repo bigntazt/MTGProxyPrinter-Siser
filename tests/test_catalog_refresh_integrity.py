@@ -323,3 +323,75 @@ def test_stream_startup_and_abandonment(card_db, tmp_path, monkeypatch, failure)
     retry.run()
     retry_task.run()
     assert rows(db, "SELECT scryfall_id FROM Printing") == [(card["id"],)]
+
+
+@pytest.mark.parametrize("order", ["import-first", "opening-response", "assembling-batch"])
+def test_cancel_before_first_batch(card_db, monkeypatch, order):
+    from PySide6.QtCore import Qt
+
+    card = load_json("regular_english_card")
+    fill_card_database_with_json_card(card_db, card)
+    db = card_db.db
+    db.row_factory = None
+    before = list(db.iterdump())
+    line = json.dumps(dict(card, id=str(UUID(int=99)))).encode() + b"\n"
+    reached, release = threading.Event(), threading.Event()
+
+    class OfflineResponse(io.BytesIO):
+        reads = 0
+        def readline(self, *args):
+            self.reads += 1
+            result = super().readline(*args)
+            if order == "assembling-batch" and self.reads == 3:
+                reached.set()
+                assert release.wait(5)
+            return result
+
+    response = OfflineResponse(line * 5001)
+    opened = []
+    def acquire(url):
+        opened.append(url)
+        if order == "opening-response":
+            reached.set()
+            assert release.wait(5)
+        return response, response
+
+    source = download.ApiStreamTask("fixture")
+    monkeypatch.setattr(source, "read_from_url", acquire)
+    monkeypatch.setattr(source, "read_json_from_url", lambda url: {})  # Startup fails in real count parser.
+    importer = download.DatabaseImportTask(source, db, ":memory:")
+    errors, finished = [], []
+    importer.error_occurred.connect(errors.append, Qt.ConnectionType.DirectConnection)
+    for name, job in (("producer", source), ("importer", importer)):
+        job.task_completed.connect(lambda n=name: finished.append(n), Qt.ConnectionType.DirectConnection)
+    producer = threading.Thread(target=source.run, daemon=True)
+    consumer = threading.Thread(target=importer.run, daemon=True)
+    if order != "import-first":
+        producer.start()
+        assert reached.wait(3)
+    try:
+        consumer.start()
+        consumer.join(3)
+        assert not consumer.is_alive() and source.cancelled.is_set()
+        if order == "import-first":
+            producer.start()
+    finally:
+        release.set()
+    producer.join(5)
+    assert not producer.is_alive() and source.queue.empty()
+    assert len(errors) == 1 and sorted(finished) == ["importer", "producer"]
+    assert not db.in_transaction and list(db.iterdump()) == before
+    assert len(opened) == int(order != "import-first")
+    assert response.reads == (3 if order == "assembling-batch" else 0)
+    assert not opened or response.closed
+    response.close()
+
+    retry = download.ApiStreamTask("fixture")
+    monkeypatch.setattr(retry, "get_available_card_count", lambda: 1)
+    monkeypatch.setattr(retry, "read_from_url", lambda url: (io.BytesIO(line), None))
+    monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
+    task = download.DatabaseImportTask(retry, db, ":memory:")
+    retry.run()
+    task.run()
+    assert db.execute("SELECT COUNT(*) FROM Printing").fetchone() == (2,)
+    assert db.execute("SELECT COUNT(*) FROM LastDatabaseUpdate").fetchone() == (2,)

@@ -14,6 +14,7 @@
 #  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+from contextlib import ExitStack
 import tempfile
 import threading
 import time
@@ -173,7 +174,7 @@ class StreamTask(CardInfoDownloadTaskBase):
 
     def __init__(self, source: str | Path | None = None, json_path: str = ""):
         super().__init__()
-        self.open_file: GzipFile | MeteredSeekableHTTPFile | None = None
+        self.open_file: GzipFile | MeteredSeekableHTTPFile | mtg_proxy_printer.metered_file.MeteredFile | None = None
         self.source = source
         self.json_path = json_path
         self.cancelled = threading.Event()
@@ -197,6 +198,8 @@ class StreamTask(CardInfoDownloadTaskBase):
     def _enqueue_stream(self, data: CardStream):
         """Put the CardStream into the queue for downstream consumption"""
         try:
+            if self.cancelled.is_set():
+                return
             for batch in itertools.batched(data, self._batch_size):
                 if self.cancelled.is_set():
                     return
@@ -208,9 +211,20 @@ class StreamTask(CardInfoDownloadTaskBase):
         else:
             self._put(None)
         finally:
+            data.close()
             if self.cancelled.is_set():
                 self._discard_pending()  # A blocked put may have finished during cancel().
             self.task_completed.emit()
+
+    def _read_records(self, stream) -> CardStream:
+        self.open_file = stream
+        try:
+            while not self.cancelled.is_set() and (line := stream.readline()):
+                if self.cancelled.is_set():
+                    return
+                yield json.loads(line)
+        finally:
+            self.open_file = None
 
     @property
     def report_progress(self):
@@ -229,8 +243,9 @@ class StreamTask(CardInfoDownloadTaskBase):
         logger.debug(f"{self.__class__.__name__}: entering cancel()")
         self.cancelled.set()
         self._discard_pending()
-        if self.open_file is not None:
-            self.open_file.close()
+        stream = self.open_file
+        if stream is not None:
+            stream.close()
         logger.debug(f"{self.__class__.__name__}: Cancel completed")
 
 
@@ -245,9 +260,10 @@ class FileStreamTask(StreamTask):
         raw_file = file_path.open("rb")
         with self._wrap_in_metered_file(raw_file, file_size) as file:
             if file_path.suffix.casefold() == ".gz":
-                self.open_file = file = gzip.open(file, "rb")
-            while line := file.readline():
-                yield json.loads(line)
+                with gzip.open(file, "rb") as decoded:
+                    yield from self._read_records(decoded)
+            else:
+                yield from self._read_records(file)
 
     def _wrap_in_metered_file(self, raw_file, file_size: int):
         monitor = mtg_proxy_printer.metered_file.MeteredFile(raw_file, file_size)
@@ -294,12 +310,14 @@ class ApiStreamTask(StreamTask):
             logger.debug(f"Obtained url: {url}")
         else:
             logger.debug(f"Reading from given URL {url}")
-        # Ignore the monitor, because progress reporting is done in the main import loop.
-        self.open_file, _ = self.read_from_url(url)  # type: GzipFile | MeteredSeekableHTTPFile, MeteredSeekableHTTPFile
-        with self.open_file:
-            while line := self.open_file.readline():
-                yield json.loads(line)
-
+        if self.cancelled.is_set():
+            return
+        with ExitStack() as resources:
+            reader, monitor = self.read_from_url(url)
+            if monitor is not None and monitor is not reader:
+                resources.enter_context(monitor)  # GzipFile leaves its underlying stream open.
+            resources.enter_context(reader)
+            yield from self._read_records(reader)
 
     @functools.cache
     def get_available_card_count(self) -> int:
