@@ -15,6 +15,7 @@
 
 
 from functools import partial
+from threading import Event
 import math
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ except ImportError:  # Py <3.13 compatibility
     from os import cpu_count as process_cpu_count
 
 from PySide6.QtWidgets import QApplication, QGraphicsScene
-from PySide6.QtCore import QObject, QMarginsF, QSizeF, Signal, QSize, Slot, QPersistentModelIndex, QThreadPool, QRectF, Qt
+from PySide6.QtCore import QObject, QMarginsF, QSizeF, Signal, QSize, Slot, QPersistentModelIndex, QThreadPool, QSaveFile, QIODevice, QRectF, Qt
 from PySide6.QtGui import QPainter, QPdfWriter, QPageSize, QImage, QColor, QPageLayout
 from PySide6.QtPrintSupport import QPrinter
 
@@ -113,6 +114,8 @@ def _render_export_page(scene: PageScene, painter: QPainter, output_dpi: int, ro
 
 
 class PNGRenderer(AsyncTask):
+    export_succeeded = Signal()
+
     def __init__(self, main_window: "MainWindow|None", document: Document, file_path: str):
         super().__init__(main_window)
         self.document = document
@@ -137,6 +140,8 @@ class PNGRenderer(AsyncTask):
             return
         logger.info(f'Exporting document with {document.rowCount()} pages as PNG image sequence to "{file_path}"')
         pool = QThreadPool(self, maxThreadCount=PNGEncoderThreadLimit)
+        self._encoder_failed = Event()
+        rendered_all = False
         dots_per_meter = round(self._output_dpi / 0.0254)
         background_color = settings["export"].get_color("png-background-color")
         number_width = len(str(page_count))
@@ -165,13 +170,17 @@ class PNGRenderer(AsyncTask):
                     if painter.isActive():
                         painter.end()
                 file_name = f"{file_path.stem}-{str(page_nr + 1).zfill(number_width)}.png"
-                pool.start(partial(self._compress_single_image, image, str(file_path.parent / file_name)))
+                path = str(file_path.parent / file_name)
+                pool.start(partial(self._compress_single_image, image, path))
+            rendered_all = True
         except RuntimeError as error:
             self.error_occurred.emit(f"PNG export failed: {error}")
         finally:
             if locked:
                 self.ui_lock_release.emit()
             pool.waitForDone()
+            if rendered_all and not self._encoder_failed.is_set():
+                self.export_succeeded.emit()
             self.task_completed.emit()
 
     @staticmethod
@@ -186,8 +195,14 @@ class PNGRenderer(AsyncTask):
         return image
 
     def _compress_single_image(self, image: QImage, output_path: str):
-        image.save(output_path, "PNG", 0)
-        self.advance_progress.emit()
+        try:
+            if not image.save(output_path, "PNG", 0):
+                raise OSError("PNG encoder could not write the image")
+        except Exception as error:
+            self._encoder_failed.set()
+            self.error_occurred.emit(f"PNG export failed for {output_path}: {error}")
+        else:
+            self.advance_progress.emit()
 
 
 def export_pdf(document: Document, file_path: str, parent: "SavePDFDialog"):
@@ -285,7 +300,9 @@ class PDFPrinter(QPdfWriter):
             suffix = str(document_index+1).zfill(suffix_length)
             path = Path(file_path)
             file_path = str(path.with_stem(f"{path.stem}-{suffix}"))
-        super().__init__(file_path)
+        self._output = QSaveFile(file_path)
+        self._output.setDirectWriteFallback(False)
+        super().__init__(self._output)
         self.setParent(parent)
         self.setCreator(f"{mtg_proxy_printer.meta_data.PROGRAMNAME}, v{mtg_proxy_printer.meta_data.__version__}")
         self.painter = QPainter()
@@ -315,6 +332,8 @@ class PDFPrinter(QPdfWriter):
     def run(self):
         logger.info("Begin rendering PDF document.")
         _require_document_output_supported(self.document)
+        if not self._output.open(QIODevice.OpenModeFlag.WriteOnly):
+            raise RuntimeError(self._output.errorString())
         try:
             first_index = self.document_index * self.pages_to_print
             last_index = min((self.document_index + 1) * self.pages_to_print, self.document.rowCount())
@@ -334,9 +353,16 @@ class PDFPrinter(QPdfWriter):
                 if page_number + 1 < last_index and not self.newPage():
                     raise RuntimeError(f"Cannot start PDF page {page_number + 2}")
                 QApplication.processEvents()
-        finally:
+            if not self.painter.end():
+                raise RuntimeError("Cannot finalize PDF")
+        except BaseException:
             if self.painter.isActive():
                 self.painter.end()
+            self._output.cancelWriting()
+            self._output.commit()  # Close and discard the temporary file.
+            raise
+        if not self._output.commit():
+            raise RuntimeError(f"Cannot publish PDF: {self._output.errorString()}")
         logger.info("Writing document finished.")
 
     def _switch_to_page(self, page_number: int):

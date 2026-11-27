@@ -362,3 +362,102 @@ def test_pdf_startup_and_paper_setup_failures(export_document,tmp_path):
     with patch.object(printing.PDFPrinter,'setPageLayout',return_value=False):
         with pytest.raises(RuntimeError,match='rejected the requested paper'):
             printing.PDFPrinter(export_document,str(tmp_path/'paper-failure.pdf'),progress.advance)
+
+
+@pytest.mark.parametrize("failure", ["second-page", "finalize"])
+def test_pdf_replacement_is_atomic(export_document, tmp_path, failure):
+    d = export_document
+    destination = tmp_path / "existing.pdf"
+    pdf(d, destination)
+    original = destination.read_bytes()
+    d.apply(ActionNewPage(content=[[card()]]))
+    progress = Progress()
+    writer = printing.PDFPrinter(d, str(destination), progress.advance)
+    if failure == "second-page":
+        fault = patch.object(printing, "_render_export_page", side_effect=[None, RuntimeError("page failure")])
+    else:
+        end = writer.painter.end
+        def failed_end():
+            end()
+            return False
+        fault = patch.object(writer.painter, "end", side_effect=failed_end)
+    with fault, pytest.raises(RuntimeError):
+        writer.run()
+    assert destination.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [destination]
+    pdf(d, destination)
+    assert len(PdfReader(destination).pages) == 2
+    assert list(tmp_path.iterdir()) == [destination]
+
+
+@pytest.mark.parametrize("blocked", [True, False])
+def test_png_dialog_accounts_only_complete_snapshot(export_document, tmp_path, blocked):
+    from types import SimpleNamespace
+    from PySide6.QtWidgets import QApplication, QWidget
+    from mtg_proxy_printer.ui.dialogs import SavePNGDialog
+    from mtg_proxy_printer.async_tasks.print_count_updater import PrintCountUpdater
+
+    d = export_document
+    from threading import Event
+    from tests.page_scene.test_prepared_scene import ordinary
+    from tests.helpers import fill_card_database_with_json_cards, load_json
+    from mtg_proxy_printer.model.carddb import CardDatabase
+
+    catalog = CardDatabase(tmp_path / "counts.sqlite", register_exit_hooks=False)
+    original = load_json("regular_english_card")
+    changed_id = "00000000-0000-0000-0000-000000000002"
+    fill_card_database_with_json_cards(catalog, [original, dict(original, id=changed_id)])
+    d.card_db.db_path = catalog.db_path
+    selected = ordinary()
+    selected.scryfall_id = original["id"]
+    d.apply(ActionAddCard(selected, 1))
+    d.apply(ActionNewPage())
+    second = tmp_path / "out-2.png"
+    if blocked:
+        second.mkdir()
+    parent = QWidget()
+    tasks = []
+    submit = Mock()
+    submit.emit.side_effect = tasks.append
+    parent.request_run_async_task = submit
+    dialog = SimpleNamespace(document=d, selectedFiles=lambda: [str(tmp_path/'out.png')],
+                             parent=lambda: parent, request_run_async_task=submit)
+    SavePNGDialog.on_accept(dialog)
+    renderer = tasks.pop(0)
+    renderer._output_dpi = 30
+    errors, advances = [], []
+    renderer.error_occurred.connect(errors.append)
+    renderer.advance_progress.connect(lambda: advances.append(1))
+    expected = {(key.scryfall_id, key.is_front) for key in d.get_all_image_keys_in_document()}
+    assert expected
+    entered, release = Event(), Event()
+    encode = renderer._compress_single_image
+
+    def held_encode(image, path):
+        entered.set()
+        assert release.wait(5)
+        return encode(image, path)
+
+    def edit_document():
+        try:
+            assert entered.wait(5)
+            selected.scryfall_id = changed_id
+        finally:
+            release.set()
+
+    renderer.ui_lock_release.connect(edit_document)
+    with patch.object(renderer, "_compress_single_image", side_effect=held_encode):
+        renderer.run()
+    QApplication.processEvents()
+    assert (tmp_path / 'out-1.png').is_file()
+    if blocked:
+        assert len(errors) == 1 and second.name in errors[0]
+        assert advances == [1] and not tasks
+    else:
+        assert not errors and advances == [1, 1]
+        assert len(tasks) == 1 and isinstance(tasks[0], PrintCountUpdater)
+        assert set(tasks[0].data) == expected
+        tasks[0].run()
+    counts = dict(catalog.db.execute('SELECT scryfall_id,usage_count FROM Printing JOIN PrintingFace USING(printing_id)'))
+    assert counts == {original['id']: int(not blocked), changed_id: 0}
+    catalog.db.close()

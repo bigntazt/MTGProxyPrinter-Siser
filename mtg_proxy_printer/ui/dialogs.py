@@ -15,6 +15,7 @@
 
 from collections.abc import Callable
 from pathlib import Path
+from functools import partial
 import shutil
 import sys
 import typing
@@ -268,9 +269,9 @@ class SavePNGDialog(QFileDialog):
         path = self.selectedFiles()[0]
         main_window = self.parent()
         renderer = mtg_proxy_printer.print.PNGRenderer(main_window, self.document, path)
+        usage = PrintCountUpdater(self.document)
+        renderer.export_succeeded.connect(partial(main_window.request_run_async_task.emit, usage))
         self.request_run_async_task.emit(renderer)
-        self.request_run_async_task.emit(PrintCountUpdater(self.document))
-        logger.info(f"Saved document to {path}")
 
     @Slot()
     def on_reject(self):

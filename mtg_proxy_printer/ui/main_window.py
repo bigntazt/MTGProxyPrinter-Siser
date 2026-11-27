@@ -184,6 +184,9 @@ class MainWindow(QMainWindow):
                 self.document, self.preview_session, mode=completed.mode, target_ppi=completed.target_ppi,
                 landscape_workaround=mtg_proxy_printer.settings.settings["export"].getboolean(
                     "landscape-compatibility-workaround"))
+        except MemoryError:
+            self.on_error_occurred(self.tr("Not enough memory for this PDF page. Prepare the page at a lower resolution and retry."))
+            return
         except (ValueError, RuntimeError) as error:
             self.on_error_occurred(str(error))
             return

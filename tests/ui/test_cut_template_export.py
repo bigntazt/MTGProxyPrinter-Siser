@@ -46,6 +46,7 @@ def host(qtbot, document_light, monkeypatch, tmp_path):
         self.setOption(QFileDialog.Option.DontUseNativeDialog, True)
     monkeypatch.setattr(SaveCutTemplateDialog, "__init__", non_native)
     document_light.page_layout = PageLayoutSettings(paper_size="A4")
+    document_light.image_db.db_path = tmp_path / 'image-cache'
     widget = ExportHost(document_light)
     qtbot.addWidget(widget)
     yield widget

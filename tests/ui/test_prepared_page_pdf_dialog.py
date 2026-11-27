@@ -214,3 +214,21 @@ def test_document_updater_compatibility_and_ambiguous_inputs():
     assert task.data==[('fixture',True)] and task.db_path=='original.db'
     for kwargs in ({'document':document,'image_keys':()}, {'document':document,'db_path':'x'}, {}, {'image_keys':()}, {'db_path':'x'}):
         with pytest.raises(ValueError): PrintCountUpdater(**kwargs)
+
+
+def test_ready_action_reports_capture_allocation_failure(preview):
+    h = preview
+    start(h, mode="original")
+    action = h.window.ui.action_export_prepared_page_pdf
+    assert action.isEnabled()
+    with patch.object(main_window, "capture_prepared_page_pdf", side_effect=MemoryError()), \
+            patch.object(h.window, "on_error_occurred") as error, \
+            patch.object(main_window, "PreparedPagePDFDialog") as review, \
+            patch.object(QFileDialog, "open") as save:
+        submitted = len(h.tasks)
+        action.trigger()
+        error.assert_called_once()
+        assert "memory" in error.call_args.args[0].lower()
+        review.assert_not_called()
+        save.assert_not_called()
+        assert h.window.current_dialog is None and len(h.tasks) == submitted
