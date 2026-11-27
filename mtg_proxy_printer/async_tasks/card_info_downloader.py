@@ -14,6 +14,7 @@
 #  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+import threading
 import time
 from collections.abc import Generator, Sequence
 import functools
@@ -70,7 +71,7 @@ socket.setdefaulttimeout(5)
 
 CardStream = Generator[CardDataType, None, None]
 CardOrFace = CardDataType | FaceDataType
-CardDataQueue = queue.Queue[tuple[CardDataType, ...] | None]
+CardDataQueue = queue.Queue[tuple[CardDataType, ...] | Exception | None]
 
 
 class CardFaceData(typing.NamedTuple):
@@ -160,6 +161,10 @@ class FileDownloadTask(CardInfoDownloadTaskBase):
         return True
 
 
+class StreamCancelled(Exception):
+    pass
+
+
 class StreamTask(CardInfoDownloadTaskBase):
     """Base class for tasks that stream data via a queue."""
     _queue_depth = 5
@@ -170,19 +175,28 @@ class StreamTask(CardInfoDownloadTaskBase):
         self.open_file: GzipFile | MeteredSeekableHTTPFile | None = None
         self.source = source
         self.json_path = json_path
+        self.cancelled = threading.Event()
         self.queue: CardDataQueue = queue.Queue(self._queue_depth)
+
+    def _put(self, message):
+        while not self.cancelled.is_set():
+            try:
+                self.queue.put(message, timeout=0.1)
+                return
+            except queue.Full:
+                continue
 
     def _enqueue_stream(self, data: CardStream):
         """Put the CardStream into the queue for downstream consumption"""
         try:
-            for batch in itertools.batched(data, self._batch_size):  # type: tuple[CardDataType, ...]
-                self.queue.put(batch)
-        except AttributeError:  # Cancelling closes and deletes the underlying file, causing an AttributeError in run()
-            logger.info(f"{self.__class__.__name__}: Read operation cancelled")
+            for batch in itertools.batched(data, self._batch_size):
+                if self.cancelled.is_set():
+                    return
+                self._put(batch)
+        except Exception as error:
+            self._put(error)
         else:
-            logger.info(f"{self.__class__.__name__}: Card data exhausted.")
-        finally:
-            self.queue.put(None)
+            self._put(None)
 
     @property
     def report_progress(self):
@@ -199,16 +213,13 @@ class StreamTask(CardInfoDownloadTaskBase):
 
     def cancel(self):
         logger.debug(f"{self.__class__.__name__}: entering cancel()")
+        self.cancelled.set()
         if self.open_file is not None:
             self.open_file.close()
         try:
-            self.queue.shutdown(True)  # Available on Python 3.13+
-        except AttributeError:  # Python 3.11/3.12 compatibility workaround.
-            try:
-                while True:
-                    self.queue.get_nowait()
-            except queue.Empty:
-                pass
+            self.queue.put_nowait(None)  # Wake a waiting reader.
+        except queue.Full:
+            pass  # The reader already has work and will see the cancellation flag.
         logger.debug(f"{self.__class__.__name__}: Cancel completed")
 
 
@@ -216,11 +227,7 @@ class FileStreamTask(StreamTask):
     """Reads card data from a local file and streams the content"""
 
     def run(self):
-        try:
-            data = self.read_json_card_data_from(self.source, self.json_path)
-            self._enqueue_stream(data)
-        except queue.ShutDown:
-            return
+        self._enqueue_stream(self.read_json_card_data_from(self.source, self.json_path))
 
     def read_json_card_data_from(self, file_path: Path, json_path: str = "") -> CardStream:
         file_size = file_path.stat().st_size
@@ -259,11 +266,7 @@ class ApiStreamTask(StreamTask):
     """
     def run(self):
         logger.info(f"{self.__class__.__name__}: About to stream card data in batches of {self._batch_size}")
-        data = self.read_json_card_data_from(self.source)
-        try:
-            self._enqueue_stream(data)
-        except (ValueError, queue.ShutDown):  # Cancelling raises ValueError
-            return
+        self._enqueue_stream(self.read_json_card_data_from(self.source))
 
     def read_json_card_data_from(self, url: str | None = None) -> CardStream:
         """
@@ -344,7 +347,8 @@ class SetDataImportTask(DownloaderBase):
         db = self.db
         logger.info("About to fetch set symbols.")
         # icon_filename is empty for unset symbols, so they are guaranteed to be unequal to the file name in the URI.
-        symbols_in_db: dict[UUID, str] = dict(db.execute("SELECT set_scryfall_id, icon_file_name FROM MTGSet"))
+        symbols_in_db = {uuid: (name, parent) for uuid, name, parent in db.execute(
+            "SELECT set_scryfall_id, icon_file_name, parent_set_code FROM MTGSet")}
         if not self.should_run: return
         progress_bar_text = self.tr("Download set symbols: ", "Progress bar label")
         self.task_begins.emit(1, progress_bar_text)
@@ -371,7 +375,7 @@ class SetDataImportTask(DownloaderBase):
         logger.info("All missing or outdated set symbols downloaded")
         self.task_completed.emit()
 
-    def _fetch_icon_uris_to_download(self, filenames_in_db: dict[UUID, str]) -> dict[UUID, AdditionalSetData]:
+    def _fetch_icon_uris_to_download(self, filenames_in_db: dict[UUID, tuple[str, str | None]]) -> dict[UUID, AdditionalSetData]:
         """
         Fetches the SVG icon URIs from the Scryfall API.
         :param filenames_in_db: Mapping of currently downloaded set symbols. Keys are set scryfall ids, values are filenames.
@@ -392,8 +396,14 @@ class SetDataImportTask(DownloaderBase):
                 set_item.get("parent_set_code")
             )
             # If a set is completely skipped during import, this get() avoids a KeyError
-            if filenames_in_db.get(set_scryfall_id) != file_name:
+            if set_scryfall_id not in filenames_in_db:
+                continue
+            previous_file, previous_parent = filenames_in_db[set_scryfall_id]
+            if previous_file != file_name:
                 result[set_scryfall_id] = data
+            elif previous_parent != data.parent_set_code:
+                self.db.execute("UPDATE MTGSet SET parent_set_code=? WHERE set_scryfall_id=?",
+                                (data.parent_set_code, set_scryfall_id))
         # All parsed and filtered
         self.advance_progress.emit()
         return result
@@ -489,7 +499,8 @@ class DatabaseImportTask(AsyncTask):
         self._db = db
         self.db_created = db is None
         self.should_run = True
-        self.set_code_cache: dict[str, int] = {}
+        self.set_code_cache: dict[str, tuple[int, str]] = {}
+        self.deferred_codes: dict[int, str] = {}
         self._printing_filter_dict: list[str] = []
         logger.info(f"Created {self.__class__.__name__} instance.")
 
@@ -501,8 +512,8 @@ class DatabaseImportTask(AsyncTask):
     def cancel(self):
         if self._subtask is not None and self._subtask.can_cancel:
             self._subtask.cancel()
-        self.source.cancel()
         self.should_run = False
+        self.source.cancel()
 
     @property
     def db(self) -> sqlite3.Connection:
@@ -514,9 +525,15 @@ class DatabaseImportTask(AsyncTask):
             self._db = open_database(self.carddb_path, SCHEMA_NAME)
         return self._db
 
-    @staticmethod
-    def _consume_from_queue(queue_: CardDataQueue) -> CardStream:
-        while (batch := queue_.get()) is not None:
+    def _consume_from_queue(self) -> CardStream:
+        while True:
+            batch = self.source.queue.get()
+            if self.source.cancelled.is_set():
+                raise StreamCancelled
+            if batch is None:
+                return
+            if isinstance(batch, Exception):
+                raise batch
             yield from batch
 
     def _read_optional_scalar_from_db(self, query: LiteralString, parameters: Sequence[Any] = ()):
@@ -546,7 +563,7 @@ class DatabaseImportTask(AsyncTask):
                 item_count,
                 self.tr("Update card data from Scryfall:", "Progress bar label text"))
         try:
-            items = self._consume_from_queue(self.source.queue)
+            items = self._consume_from_queue()
             self.populate_database(items, total_count=item_count)
         except Exception as e:
             self.db.rollback()
@@ -576,12 +593,16 @@ class DatabaseImportTask(AsyncTask):
         try:
             card_count = self._populate_database(card_data, total_count=total_count)
             self.task_completed.emit()
+        except StreamCancelled:
+            self.db.rollback()
         except sqlite3.Error as e:
             self.db.rollback()
+            self.source.cancel()
             logger.exception(f"Database error occurred: {e}")
             self.error_occurred.emit(str(e))
         except Exception as e:
             self.db.rollback()
+            self.source.cancel()
             logger.exception(f"Error in parsing step")
             self.error_occurred.emit(
                 self.tr(
@@ -594,6 +615,8 @@ class DatabaseImportTask(AsyncTask):
         logger.info(f"About to populate the database with card data. Expected cards: {total_count or 'unknown'}")
         db = self.db
         db.execute("BEGIN IMMEDIATE TRANSACTION")  # Acquire the write lock immediately
+        self.set_code_cache.clear()
+        self.deferred_codes.clear()
         progress_report_step = total_count // 1000
         skipped_cards = 0
         index = 0
@@ -634,6 +657,8 @@ class DatabaseImportTask(AsyncTask):
         self.task_begins.emit(
             5 + PrintingFilterUpdater.PROGRESS_STEP_COUNT,
             self.tr("Post-processing card data:", "Progress bar label text"))
+        db.executemany('UPDATE MTGSet SET set_code=? WHERE set_id=?',
+                       ((code, row) for row, code in self.deferred_codes.items()))
         self._insert_related_cards(related_printings)
         self.advance_progress.emit()
         self._clean_unused_data()
@@ -682,8 +707,17 @@ class DatabaseImportTask(AsyncTask):
         english_name = card["name"]
         card_id = self._insert_or_update_card(oracle_id, is_card, english_name)
         scryfall_set_id = card["set_id"]
-        if (set_id := self.set_code_cache.get(scryfall_set_id)) is None:
-            self.set_code_cache[scryfall_set_id] = set_id = self._insert_or_update_set(card)
+        released = card["released_at"]
+        cached = self.set_code_cache.get(scryfall_set_id)
+        if cached is None:
+            set_id = self._insert_or_update_set(card)
+            self.set_code_cache[scryfall_set_id] = set_id, released
+        else:
+            set_id, earliest = cached
+            if released < earliest:
+                self.db.execute("UPDATE MTGSet SET release_date=min(release_date,unixepoch(?, 'utc')) WHERE set_id=?",
+                                (released, set_id))
+                self.set_code_cache[scryfall_set_id] = set_id, released
         printing_id = self._insert_or_update_printing(card, card_id, set_id)
         _get_printing_filter_data(card, self._printing_filter_dict)
         self._insert_or_update_printing_filters(printing_id, self._printing_filter_dict)
@@ -751,35 +785,31 @@ class DatabaseImportTask(AsyncTask):
 
     def _insert_or_update_set(self, card: CardDataType) -> int:
         db = self.db
-        query = cached_dedent("""\
-        SELECT set_id, ( -- _insert_or_update_set()
-          set_name <> ?
-          OR release_date > unixepoch(?, 'utc')
-          OR set_code <> ?
-        ) AS needs_update
-        FROM MTGSet WHERE set_scryfall_id = ?
-        """)
-        parameters = [card["set_name"], card["released_at"], card["set"], card["set_id"]]
-        match db.execute(query, parameters).fetchone():
-            case set_id, 0:
-                return set_id  # Already present and nothing changed
-            case None:
-                return db.execute(cached_dedent("""\
-                INSERT INTO MTGSet  -- _insert_or_update_set()
-                       (set_name, release_date,        set_code, set_scryfall_id)
-                VALUES (?,        unixepoch(?, 'utc'), ?,        ?)
-                """), parameters).lastrowid or 0
-            case set_id, 1:
-                parameters = [card["set_name"], card["released_at"], card["set"], card["set_id"], set_id]
-                db.execute(cached_dedent("""\
-                UPDATE MTGSet -- _insert_or_update_set()
-                  SET (set_name, release_date,        set_code, set_scryfall_id)
-                    = (?,        unixepoch(?, 'utc'), ?,        ?)
-                  WHERE set_id = ?
-                """), parameters)
-                return set_id
-            case check_result:
-                raise RuntimeError(f"Unexpected data: {check_result}")
+        code, uuid = card["set"], card["set_id"]
+        owner = db.execute("SELECT set_id, set_scryfall_id FROM MTGSet WHERE set_code=?", (code,)).fetchone()
+        row = db.execute("SELECT set_id FROM MTGSet WHERE set_scryfall_id=?", (uuid,)).fetchone()
+        if row is None and owner and owner[1] == code:
+            # Schema 34 used the set code as a placeholder until the first refresh.
+            row = (owner[0],)
+        # SQLite checks UNIQUE immediately. A blob cannot collide with any text code.
+        # Resolve this temporary value once all existing owners have had a chance to move.
+        deferred = owner is not None and (row is None or row[0] != owner[0])
+        stored_code = uuid.encode() if deferred else code
+        values = (card["set_name"], card["released_at"], stored_code, uuid)
+        if row is None:
+            set_id = db.execute("""
+                INSERT INTO MTGSet(set_name,release_date,set_code,set_scryfall_id)
+                VALUES (?,unixepoch(?, 'utc'),?,?)
+            """, values).lastrowid
+        else:
+            set_id = row[0]
+            db.execute("""
+                UPDATE MTGSet SET set_name=?, release_date=min(release_date,unixepoch(?, 'utc')),
+                                  set_code=?, set_scryfall_id=? WHERE set_id=?
+            """, (*values, set_id))
+        if deferred:
+            self.deferred_codes[set_id] = code
+        return set_id
 
     def _insert_or_update_printing(self, card: CardDataType, card_id: int, set_id: int) -> int:
         db = self.db
