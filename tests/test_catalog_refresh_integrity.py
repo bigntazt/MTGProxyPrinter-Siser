@@ -183,3 +183,53 @@ def test_http_eof_at_record_boundary(card_db, monkeypatch, truncated):
         assert not errors
         assert db.execute("SELECT COUNT(*) FROM Printing").fetchone() == (2,)
         assert db.execute("SELECT COUNT(*) FROM LastDatabaseUpdate").fetchone() == (2,)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("ambiguous", [False, True])
+def test_first_migrated_refresh_uses_printing_links(old_db, monkeypatch, reverse, ambiguous):
+    a = load_json("regular_english_card")
+    b = dict(a, set="bee", set_id=str(UUID(int=2)), id=str(UUID(int=3)))
+    catalog = CardDatabase(old_db, register_exit_hooks=False)
+    DatabaseMigrationTask(catalog, {v: s for v, s in MIGRATION_SCRIPTS.items() if v < 34}).run()
+    with sqlite3.connect(old_db) as db:
+        assert db.execute("PRAGMA user_version").fetchone() == (34,)
+        db.execute("INSERT INTO Card(card_id,oracle_id) VALUES(42,?)", (a["oracle_id"],))
+        db.execute("INSERT INTO PrintLanguage(language_id,language) VALUES(43,'en')")
+        db.execute("INSERT INTO FaceName(face_name_id,card_name,language_id) VALUES(44,?,43)", (a["name"],))
+        for i, card in enumerate((a, b)):
+            db.execute("INSERT INTO MTGSet VALUES (?, ?, ?, '', ?, 0)",
+                       (41+i, card["set"], card["set_name"], card["released_at"]))
+            db.execute("""INSERT INTO Printing(printing_id,card_id,set_id,collector_number,scryfall_id,is_oversized,highres_image)
+                          VALUES(?,42,?,'157',?,0,1)""", (45+i, 41+i, card["id"]))
+            db.execute("INSERT INTO CardFace VALUES(?,?,44,1,?,0)", (50+i, 45+i, card["image_uris"]["png"]))
+    db.close()
+    DatabaseMigrationTask(catalog).run()
+    catalog.reopen_database()
+    db = catalog.db
+    db.row_factory = None
+    db.execute("UPDATE MTGSet SET set_preference_weight=set_id")
+    db.commit()
+    before = list(db.iterdump())
+    cards = [dict(a, set=b["set"]), dict(b, set=a["set"])]
+    if ambiguous:
+        cards[1].update(set_id=a["set_id"], set=b["set"])
+    if reverse:
+        cards.reverse()
+    # The first incoming printing for each UUID need not already be in the catalog.
+    new_cards = [dict(card, id=str(UUID(int=100+i))) for i, card in enumerate(cards)]
+    monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
+    for _ in range(2):
+        importer = download.DatabaseImportTask(MagicMock(), db, ":memory:")
+        errors = []
+        importer.error_occurred.connect(errors.append)
+        importer.populate_database(new_cards + cards)
+        if ambiguous:
+            assert errors and list(db.iterdump()) == before
+            break
+        assert not errors
+        assert rows(db, "SELECT set_id,set_code,set_scryfall_id,set_preference_weight FROM MTGSet ORDER BY set_id") == [
+            (41, b["set"], a["set_id"], 41), (42, a["set"], b["set_id"], 42)]
+        assert rows(db, "SELECT printing_id,set_id FROM Printing WHERE printing_id IN(45,46) ORDER BY printing_id") == [
+            (45, 41), (46, 42)]
+        assert not rows(db, "PRAGMA foreign_key_check")

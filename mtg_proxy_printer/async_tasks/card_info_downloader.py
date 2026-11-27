@@ -14,6 +14,7 @@
 #  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+import tempfile
 import threading
 import time
 from collections.abc import Generator, Sequence
@@ -621,6 +622,8 @@ class DatabaseImportTask(AsyncTask):
         skipped_cards = 0
         index = 0
         related_printings: list[RelatedPrintingData] = []
+        if db.execute('SELECT 1 FROM MTGSet WHERE set_scryfall_id=set_code LIMIT 1').fetchone():
+            card_data = self._resolve_migrated_sets(card_data)
         for index, card in enumerate(card_data, start=1):
             if not self.should_run:
                 logger.info(f"Aborting card import after {index} cards due to user request or data error.")
@@ -782,6 +785,31 @@ class DatabaseImportTask(AsyncTask):
                 return card_id
             case check_result:
                 raise RuntimeError(f"Unexpected data: {check_result}")
+
+    def _resolve_migrated_sets(self, cards: CardStream) -> CardStream:
+        """Claim migrated rows before any printing or code is reassigned."""
+        db = self.db
+        by_row = {}
+        by_uuid = {}
+        # An existing printing may arrive after many new ones from its set.
+        # Replay only on a migrated catalog, keeping bulk data off the Python heap.
+        with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as staged:
+            for card in cards:
+                if not self.should_run:
+                    raise StreamCancelled
+                if not _should_skip_card(card):
+                    linked = db.execute("""
+                        SELECT s.set_id FROM Printing p JOIN MTGSet s ON s.set_id=p.set_id
+                        WHERE p.scryfall_id=? AND s.set_scryfall_id=s.set_code
+                    """, (card["id"],)).fetchone()
+                    if linked:
+                        row, uuid = linked[0], card["set_id"]
+                        if by_row.setdefault(row, uuid) != uuid or by_uuid.setdefault(uuid, row) != row:
+                            raise ValueError("Ambiguous set identity in migrated printing links")
+                staged.write(json.dumps(card, separators=(",", ":")) + "\n")
+            db.executemany("UPDATE MTGSet SET set_scryfall_id=? WHERE set_id=?", by_uuid.items())
+            staged.seek(0)
+            yield from map(json.loads, staged)
 
     def _insert_or_update_set(self, card: CardDataType) -> int:
         db = self.db
