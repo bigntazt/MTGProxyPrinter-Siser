@@ -304,7 +304,7 @@ class PreparationBatchTask(AsyncTask):
                 except Exception as error:
                     cleanup_error = error
                     if status != "failed":
-                        status, detail = "failed", _error_detail(error)
+                        status, detail = "failed", _error_detail(primary or error)
             # A final public report supersedes a prior incomplete report after owned cleanup retry.
             report = preparer.cleanup_report if preparer is not None else None
             if report is None:
@@ -319,8 +319,9 @@ class PreparationBatchTask(AsyncTask):
                 logger.error("Image preparation teardown limitation: %s", detail)
             elif cleanup_error is not None and not isinstance(cleanup_error, cancellation_type):
                 detail = (detail + "; cleanup: " + _error_detail(cleanup_error))[:4096]
-                # Unknown cleanup failure cannot establish that owned resources have ended.
-                self.neural_relaunch_blocked = True
+                # A shutdown error still fails this batch, but verified cleanup permits a new explicit request.
+                # Without a trustworthy report, owned resource termination remains unknown.
+                self.neural_relaunch_blocked = report is None
                 logger.error("Image preparation teardown failure: %s", detail)
             if status == "failed":
                 self._control.cancel()

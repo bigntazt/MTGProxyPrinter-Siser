@@ -283,7 +283,11 @@ owners; session presentation still suppresses stale notifications.
 BatchSummary adds default-false metadata `neural_relaunch_blocked`. If public
 cleanup reports a child not reaped or I/O threads not stopped, the controller
 latches that condition before emitting finished, including stale generations.
-Unknown cleanup exceptions are conservatively latched too. The same controller
+Cleanup exceptions without a trustworthy termination report are conservatively
+latched too. A shutdown error still fails its batch, but verified child/thread
+termination permits a later explicit request, even if only its temporary tree
+remains. Cancellation stays the primary diagnostic cause when final cleanup also
+fails, including in stale-generation task logs. While latched, that controller
 rejects later neural submissions without creating another task; baseline modes
 remain available. This is an owner-lifetime safety latch, not a process recovery
 service. No global runner or shutdown contract changed. A pre-run discarded task
