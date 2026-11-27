@@ -220,9 +220,12 @@ def test_worker_paths_are_not_carried_into_captured_metadata(preview, setup, mon
     neural_ready(h, config)
     result = pdf.capture_prepared_page_pdf(h.document, h.session, mode='neural', target_ppi=600)
     text = '\n'.join(d.detail for d in result.diagnostics)
-    assert '<private path>' in text and 'Cannot open' in text
-    assert all(d.reason == 'provider_unavailable' for d in result.diagnostics)
-    assert all(str(value) not in text for value in (config.worker_script.parent, config.interpreter, config.checkpoint))
+    assert 'Cannot open' in text
+    assert result.diagnostics and all(d.reason == 'provider_unavailable' for d in result.diagnostics)
+    private_paths = (config.interpreter, config.worker_script, config.checkpoint,
+                     config.private_parent, config.worker_script.parent)
+    assert all(spelling not in text for value in private_paths
+               for spelling in (str(value), value.as_posix(), str(value).replace("\\", "\\\\")))
 
 
 def test_missing_bundle_is_checked_by_real_client_off_gui_and_can_fallback(preview, setup, monkeypatch):
