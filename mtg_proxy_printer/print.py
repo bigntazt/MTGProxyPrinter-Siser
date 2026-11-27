@@ -120,6 +120,7 @@ class PNGRenderer(AsyncTask):
         super().__init__(main_window)
         self.document = document
         self.file_path = Path(file_path)
+        self._saved_revision = document.output_revision
         self.page_count = document.rowCount()
         self.completed = 0
         self._output_dpi = round(RESOLUTION.magnitude)
@@ -151,6 +152,8 @@ class PNGRenderer(AsyncTask):
             _require_document_output_supported(document)
             self.ui_lock_acquire.emit()
             locked = True
+            if document.output_revision != self._saved_revision:
+                raise RuntimeError(self.tr("The document changed after Save. Start the PNG export again."))
             scene = PageScene(document, RenderMode.ON_PAPER | RenderMode.FILE_EXPORT, self)
             for page_nr in range(page_count):
                 scene.on_current_page_changed(QPersistentModelIndex(document.index(page_nr, 0)))

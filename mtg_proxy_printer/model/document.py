@@ -113,6 +113,11 @@ class Document(QAbstractItemModel):
             PageColumns.IsFront: self.tr("Side", "Table header"),
         }
 
+        self.output_revision = 0
+        for changed in (self.rowsInserted, self.rowsRemoved, self.rowsMoved, self.modelReset,
+                        self.layoutChanged, self.dataChanged, self.page_layout_changed,
+                        self.action_applied, self.action_undone):
+            changed.connect(self._output_changed)
         self.undo_stack: ActionStack = deque()
         self.redo_stack: ActionStack = deque()
         self.save_file_path: Path | None = None
@@ -127,6 +132,10 @@ class Document(QAbstractItemModel):
         self.current_drag_operation: DragOperationType = {"type": DragDropMimeTypes.PAGE_MOVE}
         logger.debug(f"Loaded document settings from configuration file: {self.page_layout}")
         logger.info(f"Created {self.__class__.__name__} instance")
+
+    @Slot()
+    def _output_changed(self):
+        self.output_revision += 1
 
     @Slot(DocumentAction)
     def apply(self, action: DocumentAction):

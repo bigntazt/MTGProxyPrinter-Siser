@@ -461,3 +461,45 @@ def test_png_dialog_accounts_only_complete_snapshot(export_document, tmp_path, b
     counts = dict(catalog.db.execute('SELECT scryfall_id,usage_count FROM Printing JOIN PrintingFace USING(printing_id)'))
     assert counts == {original['id']: int(not blocked), changed_id: 0}
     catalog.db.close()
+
+
+def test_queued_png_rejects_edit_after_save(export_document, tmp_path, qtbot):
+    from threading import Event
+    from types import SimpleNamespace
+    from PySide6.QtCore import QThreadPool
+    from PySide6.QtWidgets import QWidget
+    from mtg_proxy_printer.ui.dialogs import SavePNGDialog
+    from tests.page_scene.test_prepared_scene import ordinary
+
+    document = export_document
+    document.apply(ActionAddCard(ordinary(), 1))
+    pool = QThreadPool(maxThreadCount=1)
+    started, release, done = Event(), Event(), Event()
+    def busy():
+        started.set()
+        release.wait(5)
+    pool.start(busy)
+    assert started.wait(3)
+    parent = QWidget()
+    usage = Mock()
+    parent.request_run_async_task = usage
+    errors = []
+    def enqueue(renderer):
+        renderer.error_occurred.connect(errors.append)
+        renderer.task_completed.connect(done.set)
+        renderer._output_dpi = 30
+        pool.start(renderer.run)
+    dialog = SimpleNamespace(document=document, parent=lambda: parent, selectedFiles=lambda: [str(tmp_path/"out.png")],
+                             request_run_async_task=SimpleNamespace(emit=enqueue))
+    try:
+        SavePNGDialog.on_accept(dialog)
+        second = ordinary()
+        second.scryfall_id = "00000000-0000-0000-0000-000000000002"
+        document.apply(ActionAddCard(second, 1))
+    finally:
+        release.set()
+    qtbot.waitUntil(done.is_set, timeout=5000)
+    assert pool.waitForDone(3000)
+    assert len(errors) == 1 and "changed" in errors[0].lower()
+    assert not list(tmp_path.glob("out-*.png"))
+    usage.emit.assert_not_called()
