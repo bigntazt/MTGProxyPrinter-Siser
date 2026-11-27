@@ -146,3 +146,40 @@ def test_parent_rename_reuses_icon(card_db, monkeypatch):
     task.run()
     assert rows(db, "SELECT parent_set_code FROM MTGSet WHERE set_code='bee'") == [("new",)]
     assert len(list(card_db.get_all_sets())) == 2
+
+
+@pytest.mark.parametrize("truncated", [True, False])
+def test_http_eof_at_record_boundary(card_db, monkeypatch, truncated):
+    import http.client
+    import urllib.request
+
+    seed = load_json("regular_english_card")
+    fill_card_database_with_json_card(card_db, seed)
+    db = card_db.db
+    db.row_factory = None
+    before = list(db.iterdump())
+    card = dict(seed, id=str(UUID(int=123)))
+    line = json.dumps(card).encode() + b"\n"
+    length = len(line) * (2 if truncated else 1)
+    wire = f"HTTP/1.1 200 OK\r\nContent-Encoding: identity\r\nContent-Length: {length}\r\n\r\n".encode() + line
+    sock = MagicMock()
+    sock.makefile.return_value = io.BytesIO(wire)
+    response = http.client.HTTPResponse(sock)
+    response.begin()
+    monkeypatch.setattr(urllib.request, "urlopen", lambda request: response)
+    producer = download.ApiStreamTask("https://fixture/bulk")
+    producer._batch_size = 1
+    monkeypatch.setattr(producer, "get_available_card_count", lambda: 999)
+    monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
+    consumer = download.DatabaseImportTask(producer, db, ":memory:")
+    errors = []
+    consumer.error_occurred.connect(errors.append)
+    producer.run()
+    consumer.run()
+    if truncated:
+        assert errors and "bytes" in errors[0]
+        assert list(db.iterdump()) == before
+    else:
+        assert not errors
+        assert db.execute("SELECT COUNT(*) FROM Printing").fetchone() == (2,)
+        assert db.execute("SELECT COUNT(*) FROM LastDatabaseUpdate").fetchone() == (2,)

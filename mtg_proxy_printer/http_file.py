@@ -185,6 +185,8 @@ class MeteredSeekableHTTPFile(QObject):
 
     def readline(self, __size: int = -1) -> bytes:
         line = self.file.readline(__size)
+        if not line and __size != 0 and self._pos < self.content_length:
+            raise ConnectionAbortedError(f"Incomplete HTTP response: expected {self.content_length} bytes, received {self._pos}")
         self._store_and_report_read_progress(len(line))
         return line
 
