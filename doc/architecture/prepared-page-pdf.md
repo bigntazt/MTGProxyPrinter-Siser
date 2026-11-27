@@ -114,3 +114,11 @@ print preview need separate ownership/validation and inherit the same
 600/900/1200 policy. No neural provider, persistence, custom-mask/composite support,
 new scheduler or layout changes are introduced here. M32 separately adds the explicit
 current-page PNG path; regular PNG output stays unchanged.
+
+## Experimental neural preparation (M37)
+
+A configured Neural 2× choice can supply this prepared output. Its completed
+generation fixes mode and card-target PPI; capture rejects mismatching caller
+values before rendering. Review shows neural counts/policy rather than a Lanczos
+label. See [setup and qualification](experimental-neural-preview.md). No inference
+is started by capture/save, and ordinary output commands remain unchanged.

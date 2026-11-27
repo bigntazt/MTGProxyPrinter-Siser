@@ -14,13 +14,14 @@ except ModuleNotFoundError:
 class ImagePreparationPreview(QDockWidget):
     options_changed = Signal()
     refresh_requested = Signal()
+    setup_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.ui = Ui_ImagePreparationPreview()
         self.ui.setupUi(self)
         self.setObjectName("image_preparation_preview")
-        for name in ("mode_combo", "target_combo", "refresh_button", "status_label", "details_text"):
+        for name in ("mode_combo", "target_combo", "refresh_button", "status_label", "details_text", "setup_button"):
             setattr(self, name, getattr(self.ui, name))
         for index, ppi in enumerate(SUPPORTED_TARGET_PPI):
             self.target_combo.setItemData(index, ppi)
@@ -29,11 +30,12 @@ class ImagePreparationPreview(QDockWidget):
         self.mode_combo.currentIndexChanged.connect(self._options_changed)
         self.target_combo.currentIndexChanged.connect(self._options_changed)
         self.refresh_button.clicked.connect(self.refresh_requested)
+        self.setup_button.clicked.connect(self.setup_requested)
         self.update_controls()
 
     @property
     def mode(self):
-        return ("off", "original", "lanczos")[self.mode_combo.currentIndex()]
+        return ("off", "original", "lanczos", "neural")[self.mode_combo.currentIndex()]
 
     @property
     def target_ppi(self):
@@ -54,14 +56,21 @@ class ImagePreparationPreview(QDockWidget):
     def update_controls(self):
         interactive = self._available and not self._locked
         self.mode_combo.setEnabled(interactive)
-        self.target_combo.setEnabled(interactive and self.mode == "lanczos")
+        self.target_combo.setEnabled(interactive and self.mode in ("lanczos", "neural"))
         self.refresh_button.setEnabled(interactive and self.mode != "off")
+        self.setup_button.setEnabled(interactive)
 
     def set_unavailable(self, detail):
         self._available = False
         self.status_label.setText(self.tr("Preview unavailable"))
         self.details_text.setPlainText(detail)
         self.update_controls()
+
+    def show_configuration_required(self):
+        self.status_label.setText(self.tr("Neural setup required — standard preview retained"))
+        self.details_text.setPlainText(self.tr(
+            "Set up Worker Python, bundle worker.py, the pinned Compact checkpoint and an existing user-private work directory. "
+            "Original and Lanczos remain available."))
 
     def show_status(self, status):
         # The owner supplies a current snapshot, never an old signal payload.
@@ -83,11 +92,13 @@ class ImagePreparationPreview(QDockWidget):
         self.status_label.setText(label)
         lines = []
         if status.completion is not None:
+            neural = status.completion.mode == "neural"
+            provider = self.tr("Neural") if neural else self.tr("Lanczos")
             names = {
-                "original": self.tr("Original native pixels"),
-                "cache_hit": self.tr("Lanczos cache hits"),
-                "generated_cached": self.tr("Lanczos generated and cached"),
-                "generated_uncached": self.tr("Lanczos generated, not cached"),
+                "original": self.tr("Source-sufficient originals") if neural else self.tr("Original native pixels"),
+                "cache_hit": self.tr("{provider} cache hits").format(provider=provider),
+                "generated_cached": self.tr("{provider} generated and cached").format(provider=provider),
+                "generated_uncached": self.tr("{provider} generated, not cached").format(provider=provider),
                 "fallback_original": self.tr("Original fallback"),
                 "standard": self.tr("Standard preview"),
                 "skipped": self.tr("Unsupported/skipped"),
@@ -95,8 +106,15 @@ class ImagePreparationPreview(QDockWidget):
             for outcome, count in status.completion.outcome_counts:
                 if count:
                     lines.append(self.tr("{outcome}: {count}").format(outcome=names[outcome], count=count))
+            if status.completion.summary.error_detail:
+                lines.append(self.tr("Preparation failed: {detail}").format(
+                    detail=status.completion.summary.error_detail[:4096]))
         reasons = {
-            "provider_unavailable": self.tr("Lanczos unavailable"),
+            "provider_unavailable": self.tr("Preparation provider unavailable"),
+            "worker_unavailable": self.tr("Neural worker unavailable"),
+            "worker_rejected": self.tr("Neural worker rejected image"),
+            "request_budget": self.tr("Neural worker request limit reached"),
+            "worker_input_limit": self.tr("Source exceeds neural worker input limit"),
             "cache_write_failed": self.tr("Result could not be cached"),
             "preview_memory_limit": self.tr("Preview memory limit"),
             "missing_file": self.tr("Original source unavailable"),
@@ -105,5 +123,5 @@ class ImagePreparationPreview(QDockWidget):
         }
         for diagnostic in status.diagnostics:
             lines.append(self.tr("{reason}: {detail}").format(
-                reason=reasons.get(diagnostic.reason, self.tr("Preparation detail")), detail=diagnostic.detail))
+                reason=reasons.get(diagnostic.reason, diagnostic.reason), detail=diagnostic.detail[:4096]))
         self.details_text.setPlainText("\n".join(lines))

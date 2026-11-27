@@ -27,6 +27,8 @@ class SessionCompletion:
     published_occurrences: int
     total_page_occurrences: int = 0
     outcome_counts: tuple[tuple[str, int], ...] = ()
+    mode: str = "original"
+    target_ppi: int = 600
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,19 @@ def _card_metadata(card):
     if dimensions not in ((745, 1040), (1040, 1490)):
         return None
     return ImageKey(str(card.scryfall_id), card.is_front, ImageQuality.of_card(card)), dimensions
+
+
+def _public_worker_detail(detail, config):
+    """Keep configured worker locations out of published/output diagnostic metadata."""
+    if config is None:
+        return detail
+    locations = [(config.interpreter, "<worker Python>"), (config.worker_script, "<worker.py>"),
+                 (config.worker_script.parent, "<worker bundle>"), (config.checkpoint, "<checkpoint>"),
+                 (config.private_parent, "<private work directory>")]
+    for path, label in sorted(locations, key=lambda item: len(str(item[0])), reverse=True):
+        for value in (str(path), path.as_posix(), str(path).replace("\\", "\\\\")):
+            detail = detail.replace(value, label)
+    return detail[:4096]
 
 
 class PreparedPageSession(QObject):
@@ -470,6 +485,10 @@ class PreparedPageSession(QObject):
         diagnostics = tuple(replace(d, occurrence_ids=tuple(aliases[batch.assignments[d.occurrence_ids[0]]]))
                             if d.occurrence_ids and batch.assignments.get(d.occurrence_ids[0]) is not None else d
                             for d in batch.diagnostics)
+        if batch.request.mode == "neural":
+            diagnostics = tuple(replace(d, detail=_public_worker_detail(d.detail, batch.request.worker_config))
+                                for d in diagnostics)
+            summary = replace(summary, error_detail=_public_worker_detail(summary.error_detail, batch.request.worker_config))
         published_count = 0
         counts = Counter()
         if summary.status == "completed" and self._current(batch):
@@ -488,7 +507,8 @@ class PreparedPageSession(QObject):
         counts["standard"] = len(batch.occurrences) - published_count
         counts["skipped"] = batch.page_card_count - len(batch.occurrences)
         completion = SessionCompletion(batch.request.generation, summary, published_count,
-                                       batch.page_card_count, tuple(sorted((key, count) for key, count in counts.items() if count)))
+                                       batch.page_card_count, tuple(sorted((key, count) for key, count in counts.items() if count)),
+                                       batch.request.mode, batch.request.target_ppi)
         return completion, diagnostics
 
     @Slot()

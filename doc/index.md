@@ -52,3 +52,5 @@ are separate M35 work.
 M35 adds an [inactive neural preparation/cache service](architecture/neural-image-preparation.md).
 It preserves Original/Lanczos defaults and adds no application, preview or export
 caller; subsequent adoption remains separately scoped.
+
+- [Experimental neural preview and prepared output (M37)](architecture/experimental-neural-preview.md)

@@ -113,3 +113,11 @@ claim is made. Regular Print/print preview/PDF/PNG, multipage output, neural pro
 custom masks/CheckCard composition, settings/serialization, cache policy, registration
 geometry and calibration are unchanged. Prepared multipage/native printing remain
 separate work; this milestone adds only the explicit current-page PNG path.
+
+## Experimental neural preparation (M37)
+
+A configured Neural 2× choice can supply this prepared output. Its completed
+generation fixes mode and card-target PPI; capture rejects mismatching caller
+values before rendering. Review shows neural counts/policy rather than a Lanczos
+label. See [setup and qualification](experimental-neural-preview.md). No inference
+is started by capture/save, and ordinary output commands remain unchanged.

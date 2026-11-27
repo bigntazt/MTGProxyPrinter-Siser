@@ -14,8 +14,9 @@ settings, geometry, provider recipe or derivative identity changes.
 Open **Application → Image Preparation Preview**. The reusable dock starts hidden
 and Off on each launch. Choose **Original — native source pixels** to preserve
 the captured source dimensions, or **Lanczos resize** for conventional resizing
-at 600 PPI (initial), 900 PPI or 1200 PPI (maximum offered target). Only Lanczos
-enables the target selector. Interpolation does not recover missing image detail.
+at 600 PPI (initial), 900 PPI or 1200 PPI (maximum offered target). Lanczos and Neural enable the target selector. M37 adds an explicit
+[experimental neural setup and preview](experimental-neural-preview.md); it remains
+Off until selected and configured. Interpolation does not recover missing image detail.
 
 Refresh explicitly rereads sources through the session. External file changes
 without application notifications require Refresh. Off, closing or hiding the dock
@@ -117,3 +118,6 @@ only the explicit current-page PNG case. The shared
 Queued timing remains deferred. Custom masks/composition, neural
 providers, persisted controls and derivative retention/cleanup remain separate
 work. This milestone introduces none of them.
+
+M37 prepared exports use the immutable completed mode/card-target PPI, not live
+dock choices. Neural setup is session-only; normal output paths remain unchanged.

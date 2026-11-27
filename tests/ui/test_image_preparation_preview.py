@@ -51,7 +51,7 @@ def test_refresh_emits_explicit_request(qtbot):
 def test_fallback_and_uncached_results_are_truthful(qtbot):
     dock = ImagePreparationPreview()
     qtbot.addWidget(dock)
-    completion = SimpleNamespace(outcome_counts=(("fallback_original", 2), ("generated_uncached", 1),
+    completion = SimpleNamespace(mode="lanczos", summary=SimpleNamespace(error_detail=""), outcome_counts=(("fallback_original", 2), ("generated_uncached", 1),
                                                ("standard", 1), ("skipped", 3)))
     status = SimpleNamespace(phase="applying", progress=None, completion=completion,
                              diagnostics=(SimpleNamespace(reason="provider_unavailable", detail="Pillow missing"),))

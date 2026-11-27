@@ -38,16 +38,19 @@ class PreparedPageOutputDialog(QDialog):
         button.setText(self.tr("Save {format}…").format(format=self.format_name))
         button.clicked.connect(self.choose_path)
         self.ui.button_box.rejected.connect(self.reject)
+        provider = self.tr("Neural") if result.mode == "neural" else self.tr("Lanczos")
         mode = self.tr("Original — native source pixels") if result.mode == "original" else self.tr(
-            "Lanczos requested target: {ppi} PPI").format(ppi=result.target_ppi)
+            "{provider} requested target: {ppi} PPI").format(provider=provider, ppi=result.target_ppi)
         labels = {
-            "original": self.tr("Original native pixels"), "cache_hit": self.tr("Lanczos cache hits"),
-            "generated_cached": self.tr("Lanczos generated and cached"),
-            "generated_uncached": self.tr("Lanczos generated, not cached"),
+            "original": self.tr("Source-sufficient originals") if result.mode == "neural" else self.tr("Original native pixels"), "cache_hit": self.tr("{provider} cache hits").format(provider=provider),
+            "generated_cached": self.tr("{provider} generated and cached").format(provider=provider),
+            "generated_uncached": self.tr("{provider} generated, not cached").format(provider=provider),
             "fallback_original": self.tr("Original fallback"), "standard": self.tr("Standard rendering"),
             "skipped": self.tr("Unsupported/skipped"),
         }
         lines = [self.tr("Captured page {page}").format(page=result.page_number), mode]
+        if result.mode == "neural":
+            lines.append(self.tr("Experimental: one native 2× pass followed by conventional resizing. Text, symbols and artwork may change."))
         lines.extend(self._format_lines(result))
         lines.extend(self.tr("{outcome}: {count}").format(outcome=labels[key], count=count)
                      for key, count in result.outcome_counts if count)

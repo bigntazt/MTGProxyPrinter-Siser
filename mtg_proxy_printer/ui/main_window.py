@@ -54,6 +54,7 @@ from mtg_proxy_printer.ui.deck_import_wizard import DeckImportWizard
 from mtg_proxy_printer.ui.progress_bar import ProgressBarManager
 from mtg_proxy_printer.ui.siser_guide_dialog import SiserGuideDialog
 from mtg_proxy_printer.ui.image_preparation_preview import ImagePreparationPreview
+from mtg_proxy_printer.ui.neural_worker_setup import NeuralWorkerSetup
 from mtg_proxy_printer.ui.prepared_page_pdf_dialog import PreparedPagePDFDialog
 from mtg_proxy_printer.prepared_page_pdf import capture_prepared_page_pdf, require_ready_status
 from mtg_proxy_printer.prepared_page_png import capture_prepared_page_png
@@ -158,9 +159,9 @@ class MainWindow(QMainWindow):
         if not self._prepared_pdf_available() or not self._artwork_output_allowed():
             return
         try:
-            dock = self.image_preparation_preview
+            completed = self.preview_session.status().completion
             result = capture_prepared_page_png(
-                self.document, self.preview_session, mode=dock.mode, target_ppi=dock.target_ppi,
+                self.document, self.preview_session, mode=completed.mode, target_ppi=completed.target_ppi,
                 output_ppi=output_ppi,
                 landscape_workaround=mtg_proxy_printer.settings.settings["export"].getboolean(
                     "landscape-compatibility-workaround"))
@@ -178,9 +179,9 @@ class MainWindow(QMainWindow):
         if not self._prepared_pdf_available() or not self._artwork_output_allowed():
             return
         try:
-            dock = self.image_preparation_preview
+            completed = self.preview_session.status().completion
             result = capture_prepared_page_pdf(
-                self.document, self.preview_session, mode=dock.mode, target_ppi=dock.target_ppi,
+                self.document, self.preview_session, mode=completed.mode, target_ppi=completed.target_ppi,
                 landscape_workaround=mtg_proxy_printer.settings.settings["export"].getboolean(
                     "landscape-compatibility-workaround"))
         except (ValueError, RuntimeError) as error:
@@ -260,6 +261,8 @@ class MainWindow(QMainWindow):
 
     def _setup_image_preparation_preview(self):
         self.preview_session = None
+        self._neural_worker_config = None
+        self._neural_setup_dialog = None
         self.image_preparation_preview = dock = ImagePreparationPreview(self)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
         dock.hide()
@@ -270,6 +273,7 @@ class MainWindow(QMainWindow):
         dock.visibilityChanged.connect(self._on_preview_visibility_changed)
         dock.options_changed.connect(self._apply_preview_options)
         dock.refresh_requested.connect(self._refresh_image_preparation_preview)
+        dock.setup_requested.connect(self._configure_neural_worker)
         try:
             source = Path(self.image_db.db_path).absolute()
             derivative = source.parent / "ImageDerivatives"
@@ -299,6 +303,19 @@ class MainWindow(QMainWindow):
                 self._update_preview_status()
 
     @Slot()
+    def _configure_neural_worker(self):
+        if self._neural_setup_dialog is not None:
+            self._neural_setup_dialog.raise_()
+            return
+        dialog = self._neural_setup_dialog = NeuralWorkerSetup(self._neural_worker_config, self)
+        def accepted():
+            self._neural_worker_config = dialog.config
+            self._apply_preview_options()
+        dialog.accepted.connect(accepted)
+        dialog.finished.connect(lambda *_: setattr(self, "_neural_setup_dialog", None))
+        dialog.open()
+
+    @Slot()
     def _apply_preview_options(self):
         dock = self.image_preparation_preview
         dock.set_locked(bool(UI_LOCK_SEMAPHORE))
@@ -307,6 +324,11 @@ class MainWindow(QMainWindow):
             return
         if UI_LOCK_SEMAPHORE or not dock.isVisible() or dock.mode == "off":
             session.disable()
+        elif dock.mode == "neural":
+            if self._neural_worker_config is None:
+                session.disable()
+            else:
+                session.enable(mode="neural", target_ppi=dock.target_ppi, worker_config=self._neural_worker_config)
         else:
             session.enable(mode=dock.mode, target_ppi=dock.target_ppi)
         self._update_preview_status()
@@ -326,7 +348,11 @@ class MainWindow(QMainWindow):
     @Slot()
     def _update_preview_status(self, *_):
         if self.preview_session is not None:
-            self.image_preparation_preview.show_status(self.preview_session.status())
+            dock = self.image_preparation_preview
+            if dock.mode == "neural" and self._neural_worker_config is None and dock.isVisible():
+                dock.show_configuration_required()
+            else:
+                dock.show_status(self.preview_session.status())
         self._update_prepared_pdf_action()
 
     def _setup_undo_redo_actions(self, document: Document):

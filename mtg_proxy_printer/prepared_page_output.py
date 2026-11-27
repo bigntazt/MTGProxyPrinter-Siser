@@ -43,8 +43,10 @@ def _capture_prepared_page_output(document, session, *, mode, target_ppi, render
     require_gui_thread()
     status = session.status()
     require_ready_status(status)
-    if mode not in ("original", "lanczos") or type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
+    if mode not in ("original", "lanczos", "neural") or type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
         raise ValueError("Invalid preview options")
+    if (mode, target_ppi) != (status.completion.mode, status.completion.target_ppi):
+        raise ValueError("Preview options do not match the completed preparation generation")
     page_index = QPersistentModelIndex(document.get_current_page_index())
     if not page_index.isValid() or page_index.model() != document or page_index.parent().isValid():
         raise RuntimeError("No valid prepared current page. Refresh preparation and retry.")
