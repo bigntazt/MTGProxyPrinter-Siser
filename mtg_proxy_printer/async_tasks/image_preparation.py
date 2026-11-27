@@ -65,6 +65,30 @@ class BatchSummary:
     unique_prepared_results: int
     unavailable_occurrences: int
     error_detail: str = ""
+    neural_relaunch_blocked: bool = False
+
+
+def validate_selection(mode, target_ppi, worker_config=None):
+    """Validate frozen metadata only; optional imports never probe the filesystem."""
+    if type(mode) is not str or mode not in ("original", "lanczos", "neural"):
+        raise ValueError("Preparation mode must be original, lanczos or neural")
+    if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
+        raise ValueError("Preparation target must be integer 600, 900 or 1200")
+    if mode == "neural":
+        from mtg_proxy_printer.neural_worker_client import NeuralWorkerConfig
+        if not isinstance(worker_config, NeuralWorkerConfig):
+            raise TypeError("Neural mode requires an explicit frozen NeuralWorkerConfig")
+    elif worker_config is not None:
+        raise ValueError("worker_config is only valid for neural mode")
+
+
+def _error_detail(error):
+    return f"{type(error).__name__}: {error}"[:1024]
+
+
+def _cleanup_incomplete(report):
+    return report is not None and (report.limitations or not report.reaped
+                                   or not report.threads_stopped or not report.temporary_tree_removed)
 
 
 def _freeze_entries(entries) -> tuple[BatchEntry, ...]:
@@ -181,20 +205,19 @@ class PreparationBatchTask(AsyncTask):
     delivery_ready = Signal(object, object)  # Batch and monotonically increasing delivery IDs, never image bytes.
     terminal = Signal(object, str, str)
 
-    def __init__(self, batch_id: int, entries, *, mode, target_ppi, cache):
+    def __init__(self, batch_id: int, entries, *, mode, target_ppi, cache, worker_config=None):
         super().__init__()  # Parentless; retained by controller and existing AsyncTaskRunner.
         if type(batch_id) is not int:
             raise TypeError("Batch ID must be an integer")
-        if type(mode) is not str or mode not in ("original", "lanczos"):
-            raise ValueError("Batch mode must be original or lanczos")
-        if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
-            raise ValueError("Batch target must be integer 600, 900 or 1200")
+        validate_selection(mode, target_ppi, worker_config)
         if not isinstance(cache, DerivativeCache):
             raise TypeError("An explicit DerivativeCache is required")
         self.batch_id = batch_id
         self._entries = _freeze_entries(entries)
         self.total_occurrences = len(self._entries)
         self.mode, self.target_ppi = mode, target_ppi
+        self.worker_config = worker_config
+        self.neural_relaunch_blocked = False
         self.cache = DerivativeCache(Path(cache.root))
         self._control = _BatchControl()
 
@@ -206,7 +229,7 @@ class PreparationBatchTask(AsyncTask):
     def cancel(self):
         self._control.cancel()
 
-    def _process_group(self, source, occurrences, accepted, result_ids):
+    def _process_group(self, source, occurrences, accepted, result_ids, preparer=None):
         control = self._control
         if control.cancelled.is_set():
             return None
@@ -228,7 +251,8 @@ class PreparationBatchTask(AsyncTask):
         if key in accepted:
             control.deliver(ResultAlias(accepted[key], occurrences), self.batch_id, self.delivery_ready.emit)
             return None
-        prepared = prepare_image(snapshot, plan, mode=self.mode, cache=self.cache)
+        prepared = (preparer.prepare(snapshot, plan) if preparer is not None
+                    else prepare_image(snapshot, plan, mode=self.mode, cache=self.cache))
         if control.cancelled.is_set():
             return None
         result_id = next(result_ids)
@@ -238,29 +262,74 @@ class PreparationBatchTask(AsyncTask):
 
     def run(self):
         status, detail = "failed", "Worker exited before completing the batch"
+        preparer = None
+        # Keep optional host modules out of startup and the baseline paths.
+        cancellation_type = ()
+        primary = None
         try:
             self.task_begins.emit(self.total_occurrences, "Preparing card images")
+            if self.mode == "neural" and not self._control.cancelled.is_set():
+                from mtg_proxy_printer.image_preparation_neural import NeuralImagePreparer
+                from mtg_proxy_printer.neural_worker_client import NeuralWorkerCancelled
+                cancellation_type = NeuralWorkerCancelled
+                preparer = NeuralImagePreparer(self.worker_config, self.cache, self._control.cancelled)
             accepted, result_ids = {}, count(1)
             for source, occurrences in _groups(self._entries):
                 if self._control.cancelled.is_set():
                     break
-                # The group helper releases snapshots/prepared payloads before the next group begins.
-                result = self._process_group(source, tuple(occurrences), accepted, result_ids)
+                # Release per-image snapshots/buffers before advancing to another group.
+                result = self._process_group(source, tuple(occurrences), accepted, result_ids, preparer)
                 if result is not None:
-                    accepted[result[0]] = result[1]  # Metadata only, and only after explicit acceptance.
+                    accepted[result[0]] = result[1]  # Metadata only, after owner acceptance.
             status = "cancelled" if self._control.cancelled.is_set() else "completed"
             detail = ""
+        except cancellation_type as error:
+            primary = error
+            self._control.cancel()
+            status, detail = "cancelled", ""
         except Exception as error:
+            primary = error
             logger.exception("Image preparation batch failed")
-            status, detail = "failed", f"{type(error).__name__}: {error}"
+            status, detail = "failed", _error_detail(error)
         finally:
+            cleanup_error = None
+            if preparer is not None:
+                try:
+                    preparer.close()
+                except cancellation_type as error:
+                    cleanup_error = error
+                    self._control.cancel()
+                    if status != "failed":
+                        status, detail = "cancelled", ""
+                except Exception as error:
+                    cleanup_error = error
+                    if status != "failed":
+                        status, detail = "failed", _error_detail(error)
+            # A final public report supersedes a prior incomplete report after owned cleanup retry.
+            report = preparer.cleanup_report if preparer is not None else None
+            if report is None:
+                report = (getattr(cleanup_error, "cleanup_report", None)
+                          or getattr(primary, "cleanup_report", None))
+            if _cleanup_incomplete(report):
+                limitation = str(report)[:1800]
+                cause = detail or (_error_detail(primary or cleanup_error) if primary or cleanup_error else status)
+                detail = (cause[:1024] + "; neural cleanup incomplete: " + limitation)[:4096]
+                status = "failed"
+                self.neural_relaunch_blocked = not report.reaped or not report.threads_stopped
+                logger.error("Image preparation teardown limitation: %s", detail)
+            elif cleanup_error is not None and not isinstance(cleanup_error, cancellation_type):
+                detail = (detail + "; cleanup: " + _error_detail(cleanup_error))[:4096]
+                # Unknown cleanup failure cannot establish that owned resources have ended.
+                self.neural_relaunch_blocked = True
+                logger.error("Image preparation teardown failure: %s", detail)
             if status == "failed":
                 self._control.cancel()
             elif self._control.cancelled.is_set():
                 status = "cancelled"
             self._entries = ()
+            preparer = primary = cleanup_error = None
             try:
-                self.terminal.emit(self.batch_id, status, detail)
+                self.terminal.emit(self.batch_id, status, detail[:4096])
             finally:
                 self.task_completed.emit()  # Runner, not this task, emits task_deleted.
 
@@ -286,6 +355,7 @@ class ImagePreparationController(QObject):
         self._submit_task, self._consume_result = submit_task, consume_result
         self._active: _ActiveBatch | None = None
         self._closed = False
+        self._neural_relaunch_blocked = False
         self._delivering = False
         self._deferred_terminal = None
 
@@ -298,13 +368,17 @@ class ImagePreparationController(QObject):
         self._assert_owner()
         return self._active is not None
 
-    def start(self, entries: Iterable, *, mode, target_ppi, cache) -> int:
+    def start(self, entries: Iterable, *, mode, target_ppi, cache, worker_config=None) -> int:
         self._assert_owner()
         if self._closed:
             raise RuntimeError("Image preparation controller is closed")
         if self._active is not None:
             raise RuntimeError("An image preparation batch is already active")
-        task = PreparationBatchTask(next(_batch_ids), entries, mode=mode, target_ppi=target_ppi, cache=cache)
+        validate_selection(mode, target_ppi, worker_config)
+        if mode == "neural" and self._neural_relaunch_blocked:
+            raise RuntimeError("Neural preparation blocked: prior worker teardown is unresolved")
+        task = PreparationBatchTask(next(_batch_ids), entries, mode=mode, target_ppi=target_ppi,
+                                    cache=cache, worker_config=worker_config)
         active = _ActiveBatch(task)
         active.connections = [
             task.delivery_ready.connect(self._on_delivery, Qt.ConnectionType.QueuedConnection),
@@ -367,7 +441,7 @@ class ImagePreparationController(QObject):
                                              active.unique, active.unavailable))
         except Exception as error:
             logger.exception("Image preparation consumer rejected a delivery")
-            active.failure = f"{type(error).__name__}: {error}"
+            active.failure = _error_detail(error)
             control.cancel()
         finally:
             event = None  # Drop the owner slot's payload before waking work or forwarding deferred terminal metadata.
@@ -386,12 +460,13 @@ class ImagePreparationController(QObject):
         if self._delivering:
             self._deferred_terminal = batch_id, status, detail
             return
+        self._neural_relaunch_blocked |= active.task.neural_relaunch_blocked
         if active.failure:
-            status, detail = "failed", active.failure
+            status, detail = "failed", (active.failure + ("; " + detail if detail else ""))[:4096]
         elif status != "failed" and (active.task._control.cancelled.is_set() or self._closed):
             status, detail = "cancelled", ""
         summary = BatchSummary(batch_id, status, active.task.total_occurrences, active.resolved,
-                               active.unique, active.unavailable, detail)
+                               active.unique, active.unavailable, detail, active.task.neural_relaunch_blocked)
         self._active = None
         self._disconnect(active)
         self.finished.emit(summary)  # Idle before notification; a handler may start the next batch.

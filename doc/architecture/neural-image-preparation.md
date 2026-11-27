@@ -2,8 +2,10 @@
 
 M35 connects immutable source snapshots/plans, the explicit M34 worker client,
 current processing provenance and the existing M25 final-target cache. It returns
-the existing PreparedImage type. **No normal application, batch, page session,
-preview or output caller adopts it.** Original/Lanczos remain the baseline; the
+the existing PreparedImage type. M36 adopts it only through explicitly configured
+internal [background batches](image-preparation-batch.md) and
+[page sessions](prepared-raster-session.md). **No normal application/preview or
+output caller enables neural mode.** Original/Lanczos remain the baseline; the
 experimental Compact reference is not a recommended faithful neural default.
 
 ## Explicit lazy ownership

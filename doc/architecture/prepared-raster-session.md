@@ -7,7 +7,8 @@ M30 adopts it only in the normal main-page preview; see
 [Main-page image preparation preview](prepared-image-preview.md). M31 adds an explicit
 [prepared current-page PDF](prepared-page-pdf.md) capture; regular outputs remain
 unchanged. There are no persisted settings, new dependencies, processing
-recipes, custom masks, composite rendering, neural providers or geometry changes.
+recipes, custom masks, composite rendering or geometry changes. M36 adds the
+explicit internal neural provider selection described below.
 
 ## API and explicit ownership
 
@@ -31,7 +32,8 @@ Relative source-root interpretation is frozen at construction without file acces
 Submission must use the existing asynchronous task mechanism and M27's submission
 contract; it must not run a task synchronously or schedule it and then report failure.
 
-Mode is exactly original or lanczos; target_ppi is explicitly integer 600, 900 or 1200,
+Baseline modes are original and lanczos; internal neural mode additionally requires
+worker_config as described below. target_ppi is explicitly integer 600, 900 or 1200,
 not bool. Invalid options raise before changing an existing valid state. enable
 always requests a fresh generation, including unchanged options. refresh forces
 recapture and source rereading even for unchanged ImageKey/path/options. refresh
@@ -241,3 +243,31 @@ disable restores exact default pixels. Arial is loaded process-locally for revie
 offscreen default-font limitations are not native interactive qualification.
 No new PDF proof, normal application launch, catalog, inference or hardware operation
 is part of this milestone.
+
+## Explicit internal neural selection (M36)
+
+An internal caller may use `session.enable(mode="neural", target_ppi=900,
+worker_config=config)` with an explicit frozen M34 NeuralWorkerConfig. Mode,
+config and integer PPI validate before changing a valid generation. Other modes
+reject a supplied config. The frozen _Request carries mode, PPI, config and cache
+root along with generation; freshness compares the whole selection. Distinct
+worker configurations at the same mode/PPI therefore cannot be confused. If A
+is draining while B then C are requested, only C can be submitted afterward.
+Filesystem probes, runtime discovery and readiness run inside the background task.
+
+No new presentation mechanism was added. Current-generation checks still precede
+GUI decode and atomic publication; page/model/source notifications or Refresh
+immediately clear published lookup. External changes without a notification
+require Refresh. Failure, cancellation and obsolete staging publish nothing.
+Fallback diagnostics are deferred and include alias occurrence IDs. Stale cleanup
+limitations are logged by the task but do not appear as current diagnostics.
+If teardown left a child or I/O thread live, the controller prevents the pending
+neural request from starting and the current session reports scheduling_failed.
+
+GUI-thread QPixmap ownership and retained-raster limits remain unchanged, including
+one charge per unique accepted raster, predecode estimate, actual decoded charge
+and shared over-budget alias sentinel. MainWindow still supplies 512 MiB; other
+callers retain their existing optional budget. This limits retained rasters, not
+source/processing/GPU memory. No new UI controls, settings, PDF/PNG allowlist,
+printing, cutting or geometry adoption is part of M36. The live dock remains
+hidden/Off initially and continues to offer only Off, Original and Lanczos.

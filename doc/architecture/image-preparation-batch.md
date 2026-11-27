@@ -1,9 +1,10 @@
-# Background image preparation (M27)
+# Background image preparation (M27, internal neural adoption M36)
 
-M27 adds `async_tasks/image_preparation.py`: one sequential PreparationBatchTask
-and one owner-thread ImagePreparationController. No normal application, document,
-scene, UI, settings or export caller adopts them. M24–M26, the general task system,
-progress widgets, shutdown and all processing policies remain unchanged.
+M27 introduced one sequential PreparationBatchTask and one owner-thread
+ImagePreparationController. M29/M30 later adopted it for current-page preview.
+M36 adds an explicitly configured internal neural path; the live dock and normal
+output callers retain their existing modes. The runner, shutdown contract and
+accepted processing policies remain unchanged.
 
 ## Public API and ownership
 
@@ -244,3 +245,46 @@ rendering/export adoption, retention and M28 remain deferred.
 
 Qt background: [signals across threads](https://doc.qt.io/qt-6/threads-qobject.html#signals-and-slots-across-threads),
 [QObject connections/disconnection](https://doc.qt.io/qt-6/qobject.html#disconnect).
+
+## Internal neural batches (M36)
+
+`start` and `PreparationBatchTask` additionally accept `mode="neural"` with a
+keyword-only `worker_config`. Only that mode accepts a frozen M34
+`NeuralWorkerConfig`; it is required, with no discovery/default provider. All
+three integer targets (600/900/1200) are supported. Invalid mode/config/target
+metadata is rejected before submission. Capture the config, immutable values and
+explicit absolute derivative root; do not probe interpreter/checkpoint paths or
+verify readiness on the GUI thread. Existing calls omit the new keyword.
+
+On explicit neural execution, the task imports M35 and constructs one lazy
+NeuralImagePreparer on its executing thread with the batch cache and the exact
+batch cancellation Event. Only the existing post-content-deduplication site calls
+its prepare method. The same executing thread closes it before terminal and
+task_completed on every exit. Empty, unavailable-only and sufficient-only batches
+start zero workers. Original/Lanczos retain M26 dispatch and never import neural
+host modules. Torch/CUDA/Spandrel remain in the child. M35 owns readiness before
+warm lookup, recipes, pixels, provider failure policy and final-target caching.
+There is no replacement, automatic retry or provider substitution.
+
+Grouping, one-slot acknowledged delivery, accepted-only aliases and metadata-only
+progress retain their existing semantics. Original fallback is a unique prepared
+result with its original reason/detail. Aliases count occurrences without another
+unique result or inference. Cache persistence failure retains generated_uncached.
+
+NeuralWorkerCancelled from preparation or final close is classified before generic
+failure handling. Clean teardown yields cancelled and discards pending delivery;
+a completed synchronous store may remain valid. Independent processing/consumer
+failure remains failed even when cancellation also occurs. Final public cleanup
+information supersedes an earlier report after owned cleanup retry. Incomplete
+teardown yields failed with bounded primary-cause and cleanup detail (at most 4096
+characters). The executing task logs cleanup limitations even for stale or destroyed
+owners; session presentation still suppresses stale notifications.
+
+BatchSummary adds default-false metadata `neural_relaunch_blocked`. If public
+cleanup reports a child not reaped or I/O threads not stopped, the controller
+latches that condition before emitting finished, including stale generations.
+Unknown cleanup exceptions are conservatively latched too. The same controller
+rejects later neural submissions without creating another task; baseline modes
+remain available. This is an owner-lifetime safety latch, not a process recovery
+service. No global runner or shutdown contract changed. A pre-run discarded task
+still has the established runner boundary.

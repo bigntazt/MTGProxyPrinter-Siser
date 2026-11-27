@@ -7,9 +7,10 @@ from PySide6.QtCore import QObject, QModelIndex, QPersistentModelIndex, QTimer, 
 
 from mtg_proxy_printer.async_tasks.image_preparation import (
     BatchEntry, BatchProgress, BatchSummary, ImagePreparationController, PreparedResult, ResultAlias, UnavailableResult,
+    validate_selection,
 )
 from mtg_proxy_printer.image_derivative_cache import DerivativeCache
-from mtg_proxy_printer.image_source import SUPPORTED_TARGET_PPI, SourceRequest, capture_source_request
+from mtg_proxy_printer.image_source import SourceRequest, capture_source_request
 from mtg_proxy_printer.model.card import Card
 from mtg_proxy_printer.model.document_page import PageColumns
 from mtg_proxy_printer.model.imagedb_files import ImageKey, ImageQuality
@@ -52,6 +53,8 @@ class _Request:
     generation: int
     mode: str
     target_ppi: int
+    worker_config: object
+    cache_root: Path
 
 
 @dataclass(frozen=True)
@@ -141,7 +144,7 @@ class PreparedPageSession(QObject):
         self._generation = 0
         self._status_progress = self._status_completion = None
         self._status_diagnostics = ()
-        self._options: tuple[str, int] | None = None
+        self._options: tuple | None = None
         self._pending: _Request | None = None
         self._storage = _Storage()
         self.destroyed.connect(self._storage.clear, Qt.ConnectionType.DirectConnection)
@@ -206,15 +209,12 @@ class PreparedPageSession(QObject):
         self._status_diagnostics += (diagnostic,)
         self.diagnostic.emit(diagnostic)
 
-    def enable(self, *, mode, target_ppi):
+    def enable(self, *, mode, target_ppi, worker_config=None):
         self._assert_gui()
-        if type(mode) is not str or mode not in ("original", "lanczos"):
-            raise ValueError("Session mode must be original or lanczos")
-        if type(target_ppi) is not int or target_ppi not in SUPPORTED_TARGET_PPI:
-            raise ValueError("Session target must be integer 600, 900 or 1200")
+        validate_selection(mode, target_ppi, worker_config)
         if self._closed:
             raise RuntimeError("Preparation session is closed")
-        self._options = mode, target_ppi
+        self._options = mode, target_ppi, worker_config, self._cache.root
         self._enabled = True
         self._invalidate()
 
@@ -324,7 +324,8 @@ class PreparedPageSession(QObject):
     def _current(self, batch):
         if (self._closed or not self._enabled or self._mutation_depth
                 or batch.request.generation != self._generation
-                or (batch.request.mode, batch.request.target_ppi) != self._options):
+                or (batch.request.mode, batch.request.target_ppi, batch.request.worker_config,
+                    batch.request.cache_root) != self._options):
             return False
         selected = self._selected_page()
         return (selected is not None and selected[1] is batch.page
@@ -533,7 +534,8 @@ class PreparedPageSession(QObject):
             try:
                 batch.batch_id = self._controller.start(
                     tuple(BatchEntry(occurrence.occurrence_id, occurrence.source) for occurrence in batch.occurrences),
-                    mode=request.mode, target_ppi=request.target_ppi, cache=self._cache)
+                    mode=request.mode, target_ppi=request.target_ppi, cache=DerivativeCache(request.cache_root),
+                    worker_config=request.worker_config)
             except RuntimeError as error:
                 self._storage.active = None
                 if not self._closed and generation == self._generation:
