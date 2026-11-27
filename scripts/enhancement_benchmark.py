@@ -325,6 +325,15 @@ def final_result(out, recipe, image, common, method, truth):
     return record, False
 
 
+def retain_label(out, entry):
+    """Persist one completed association independently of the current stage index."""
+    label = {"record": "records/" + Path(entry["record"]).name,
+             "sample_id": entry["sample_id"], "face": entry["face"]}
+    path = out / "labels" / (identity(label) + ".json")
+    if not path.exists():
+        write_json(path, label)
+
+
 def run(args):
     manifest = read_json(args.model_manifest)["models"]
     model_map = {m["id"]: m for m in manifest}
@@ -344,6 +353,12 @@ def run(args):
     out = Path(args.output).resolve()
     out.mkdir(parents=True, exist_ok=True)
     write_json(out / "environment.json", env)
+    stage_path = out / "run-index.json"
+    if stage_path.exists():
+        # Import labels from runs produced before per-result label files existed.
+        for entry in read_json(stage_path)["records"]:
+            if "sample_id" in entry:
+                retain_label(out, entry)
     run_index = []
     for candidate in candidates:
         neural = candidate not in ("original", "lanczos")
@@ -406,6 +421,7 @@ def run(args):
                     index_entry = {"sample_id": sample["id"], "face": sample["face"], "record": str(final_path)}
                     cached_final = reusable(final_path, recipe) if decision is None else None
                     if cached_final:
+                        retain_label(out, index_entry)
                         run_index.append({**index_entry, "reused": True})
                         print(f"REUSED {candidate} {sample['id']} {ppi}", flush=True)
                         continue
@@ -486,6 +502,7 @@ def run(args):
                             write_json(final_path, {**common_target, "recipe": recipe, "recipe_id": identity(recipe),
                                                     "method": candidate, "status": native_record["status"],
                                                     "error": native_record["error"], "native_record_id": native_record["recipe_id"]})
+                    retain_label(out, index_entry)
                     run_index.append({**index_entry, "reused": False})
                     record = read_json(final_path)
                     print(f"{record['status'].upper()} {candidate} {sample['id']} {ppi}", flush=True)
@@ -496,7 +513,7 @@ def run(args):
                 import torch
                 gc.collect()
                 torch.cuda.empty_cache()
-    write_json(out / "run-index.json", {"schema": SCHEMA, "records": run_index})
+    write_json(stage_path, {"schema": SCHEMA, "records": run_index})
     records = [read_json(row["record"]) for row in run_index]
     counts = {s: sum(r["status"] == s for r in records) for s in sorted({r["status"] for r in records})}
     write_json(out / "summary.json", {"counts": counts, "record_count": len(records)})

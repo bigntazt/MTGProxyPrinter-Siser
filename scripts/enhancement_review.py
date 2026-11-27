@@ -96,15 +96,20 @@ def report(args):
     index = Path(args.index) if args.index else results / "run-index.json"
     entries = bench.read_json(index)["records"] if index.is_file() or args.index else []
     if not args.index:
-        indexed = {Path(entry["record"]).resolve() for entry in entries}
-        entries.extend({"record": path} for path in sorted((results / "records").glob("*.json"))
-                       if path.resolve() not in indexed)
+        entries.extend(bench.read_json(path) for path in sorted((results / "labels").glob("*.json")))
+        # Older records can carry the only surviving copy of their original label.
+        entries.extend({"record": path} for path in sorted((results / "records").glob("*.json")))
     records = []
+    seen = set()
     for entry in entries:
-        record = bench.read_json(entry["record"])
+        path = results / entry["record"]
+        record = bench.read_json(path)
         if "sample_id" in entry:
             record.update(sample_id=entry["sample_id"], face=entry["face"])
-        records.append(record)
+        key = (path, record["sample_id"], record["face"])
+        if args.index or key not in seen:
+            records.append(record)
+            seen.add(key)
     # Every successful result must still decode and match its hash before inclusion.
     for record in records:
         if record["status"] == "success" and not bench.validate_output(

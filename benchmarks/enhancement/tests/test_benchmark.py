@@ -369,6 +369,55 @@ class ReuseRegressionTests(unittest.TestCase):
             self.assertEqual(image.getpixel((0, 0)), (50, 50, 50))
         self.assertEqual(resumed["quality_against_synthetic_truth"]["rgb_mae"], 0)
 
+    def check_report_after_partial_run(self, interrupt, legacy=False):
+        import csv
+        import sys
+        from argparse import Namespace
+        spec = importlib.util.spec_from_file_location("review", ROOT / "scripts" / "enhancement_review.py")
+        review = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, enhancement_benchmark=bench):
+            spec.loader.exec_module(review)
+        a = dict(self.sample, id="A", face="front")
+        b = dict(self.sample, id="B", face="back")
+        c = dict(self.sample, id="C", face="front")
+        if interrupt:
+            bench.write_json(self.corpus, {"samples": [a, b, dict(c, sha256="bad")]})
+            with self.assertRaisesRegex(ValueError, "Source hash mismatch: C"):
+                bench.run(self.args)
+            samples, rerun = [a, b, c], c
+        else:
+            samples, rerun = [a, b], b
+            bench.write_json(self.corpus, {"samples": samples})
+            bench.run(self.args)
+            if legacy:
+                # Recreate the previous index-and-record layout without label files.
+                (self.output / 'labels').rename(self.root / 'unused-labels')
+                rerun = a  # B exists only in the prior stage index.
+        bench.write_json(self.corpus, {"samples": samples})
+        self.args.samples = rerun["id"]
+        bench.run(self.args)
+        bench.run(self.args)  # Reuse must not multiply associations.
+        index = self.output / "run-index.json"
+        for selection, expected in ((None, samples), (index, [rerun])):
+            report = self.root / ("stage" if selection else "all")
+            review.report(Namespace(results=self.output, output=report, corpus=self.corpus,
+                                    index=selection, samples="A,B,C"))
+            with (report / "results.csv").open(newline="") as stream:
+                labels = [(row["sample_id"], row["face"]) for row in csv.DictReader(stream)]
+            self.assertCountEqual(labels, [(s["id"], s["face"]) for s in expected])
+            self.assertEqual(sorted(p.name for p in report.glob("*-comparison.png")),
+                             sorted(s["id"] + "-600-comparison.png" for s in expected))
+        self.assertEqual(len(list((self.output / "records").glob("*.json"))), 1)
+
+    def test_partial_rerun_retains_completed_labels(self):
+        self.check_report_after_partial_run(False)
+
+    def test_previous_stage_index_survives_first_partial_rerun(self):
+        self.check_report_after_partial_run(False, legacy=True)
+
+    def test_interrupted_run_retains_completed_labels(self):
+        self.check_report_after_partial_run(True)
+
     def test_shared_content_keeps_both_report_labels(self):
         import csv
         import sys
