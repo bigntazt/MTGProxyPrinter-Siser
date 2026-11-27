@@ -152,10 +152,10 @@ class PNGRenderer(AsyncTask):
             _require_document_output_supported(document)
             self.ui_lock_acquire.emit()
             locked = True
-            if document.output_revision != self._saved_revision:
-                raise RuntimeError(self.tr("The document changed after Save. Start the PNG export again."))
+            self._require_saved_revision()
             scene = PageScene(document, RenderMode.ON_PAPER | RenderMode.FILE_EXPORT, self)
             for page_nr in range(page_count):
+                self._require_saved_revision()
                 scene.on_current_page_changed(QPersistentModelIndex(document.index(page_nr, 0)))
                 scene.require_output_ready()
                 require_artwork_output_supported(document.page_layout.print_registration_marks_style, scene.geometry)
@@ -172,6 +172,8 @@ class PNGRenderer(AsyncTask):
                 finally:
                     if painter.isActive():
                         painter.end()
+                # Once submitted, the encoder owns a detached page image.
+                self._require_saved_revision()
                 file_name = f"{file_path.stem}-{str(page_nr + 1).zfill(number_width)}.png"
                 path = str(file_path.parent / file_name)
                 pool.start(partial(self._compress_single_image, image, path))
@@ -185,6 +187,10 @@ class PNGRenderer(AsyncTask):
             if rendered_all and not self._encoder_failed.is_set():
                 self.export_succeeded.emit()
             self.task_completed.emit()
+
+    def _require_saved_revision(self):
+        if self.document.output_revision != self._saved_revision:
+            raise RuntimeError(self.tr("The document changed after Save. Start the PNG export again."))
 
     @staticmethod
     def _create_image(page_size: QSize, background_color: QColor, dots_per_meter: int):

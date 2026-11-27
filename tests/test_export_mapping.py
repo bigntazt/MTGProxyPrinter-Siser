@@ -503,3 +503,84 @@ def test_queued_png_rejects_edit_after_save(export_document, tmp_path, qtbot):
     assert len(errors) == 1 and "changed" in errors[0].lower()
     assert not list(tmp_path.glob("out-*.png"))
     usage.emit.assert_not_called()
+
+
+@pytest.mark.parametrize("when", ["between-pages", "during-second-capture"])
+def test_pending_add_during_png_capture(export_document, tmp_path, qtbot, monkeypatch, when):
+    from threading import Event, Thread
+    from types import SimpleNamespace
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication, QWidget
+    from mtg_proxy_printer.async_tasks.image_downloader import SingleDownloadTask
+    from mtg_proxy_printer.model.carddb import CardDatabase
+    from mtg_proxy_printer.ui.dialogs import SavePNGDialog
+    from tests.helpers import fill_card_database_with_json_cards, load_json
+
+    document = export_document
+    original = load_json("regular_english_card")
+    changed_id = "00000000-0000-0000-0000-000000000002"
+    catalog = CardDatabase(tmp_path / "usage.sqlite", register_exit_hooks=False)
+    fill_card_database_with_json_cards(catalog, [original, dict(original, id=changed_id)])
+    document.card_db.db_path = catalog.db_path
+    document.image_db.db_path = tmp_path / "images"
+    red, green = card("red"), card("lime")
+    red.oracle_id = green.oracle_id = original["oracle_id"]
+    red.scryfall_id, green.scryfall_id = original["id"], changed_id
+    document.apply(ActionAddCard(red, 1))
+    document.apply(ActionNewPage())
+    pending = SingleDownloadTask(document.image_db, ActionAddCard(green, target_page=1))
+    pending.request_action.connect(document.apply, Qt.ConnectionType.BlockingQueuedConnection)
+    entered, release = Event(), Event()
+    def cached_image(key):
+        entered.set()
+        assert release.wait(8)
+        return green.image_file
+    monkeypatch.setattr(pending, "_load_from_memory", cached_image)
+    worker = Thread(target=pending.run, daemon=True)
+    worker.start()
+    assert entered.wait(3)
+
+    parent = QWidget()
+    tasks, errors = [], []
+    parent.request_run_async_task = SimpleNamespace(emit=tasks.append)
+    dialog = SimpleNamespace(document=document, parent=lambda: parent,
+                             selectedFiles=lambda: [str(tmp_path/"sheet.png")],
+                             request_run_async_task=parent.request_run_async_task)
+    SavePNGDialog.on_accept(dialog)
+    renderer = tasks.pop()
+    renderer.error_occurred.connect(errors.append)
+    renderer._output_dpi = 48
+    def finish_add():
+        release.set()
+        qtbot.waitUntil(lambda: not worker.is_alive(), timeout=4000)
+        assert document.pages[1][0].card is green
+
+    start_encoder = printing.QThreadPool.start
+    def submit_page(pool, job):
+        start_encoder(pool, job)
+        if when == "between-pages" and not release.is_set():
+            finish_add()
+    render_page = printing._render_export_page
+    pages = 0
+    def paint(*args):
+        nonlocal pages
+        pages += 1
+        if when == "during-second-capture" and pages == 2:
+            finish_add()
+        render_page(*args)
+
+    with patch.object(printing.QThreadPool, "start", submit_page), patch.object(printing, "_render_export_page", paint):
+        renderer.run()
+    QApplication.processEvents()
+    assert not worker.is_alive()
+    for usage in tasks:
+        usage.run()
+    counts = dict(catalog.db.execute("SELECT scryfall_id,usage_count FROM Printing JOIN PrintingFace USING(printing_id)"))
+    catalog.db.close()
+    first = QImage(str(tmp_path/"sheet-1.png"))
+    assert not first.isNull() and first.pixelColor(50, 70) == QColor("red")
+    second = tmp_path / "sheet-2.png"
+    second_color = QImage(str(second)).pixelColor(50, 70).name() if second.exists() else None
+    assert (second.exists(), second_color, counts, len(tasks)) == (
+        False, None, {original["id"]: 0, changed_id: 0}, 0)
+    assert len(errors) == 1 and "changed" in errors[0].lower()

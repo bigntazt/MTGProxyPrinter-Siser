@@ -114,7 +114,10 @@ class Document(QAbstractItemModel):
         }
 
         self.output_revision = 0
-        for changed in (self.rowsInserted, self.rowsRemoved, self.rowsMoved, self.modelReset,
+        # Invalidate active captures before structural writes can alter the page being painted.
+        for changed in (self.rowsAboutToBeInserted, self.rowsAboutToBeRemoved, self.rowsAboutToBeMoved,
+                        self.modelAboutToBeReset, self.layoutAboutToBeChanged,
+                        self.rowsInserted, self.rowsRemoved, self.rowsMoved, self.modelReset,
                         self.layoutChanged, self.dataChanged, self.page_layout_changed,
                         self.action_applied, self.action_undone):
             changed.connect(self._output_changed)
