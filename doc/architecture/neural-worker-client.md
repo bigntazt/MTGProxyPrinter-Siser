@@ -188,3 +188,10 @@ Roadmap remains explicit:
 The client returns native samples only, with no PNG/physical-PPI/derivative policy.
 No neural default is selected and the optional provider must not displace the
 existing Original/Lanczos baseline.
+
+## M35 follow-up
+
+The [inactive neural preparation service](neural-image-preparation.md) now owns
+the separately authorized source/pixel-recipe/final-target/cache bridge. It checks
+current public readiness before each neural cache lookup. No normal caller adopts
+the service; batch/session work remains M36 and experimental UI/output M37.

@@ -48,3 +48,7 @@ The [explicit neural worker client](architecture/neural-worker-client.md) adds
 process ownership and verified native RGB results for a future adapter. It remains
 inactive in the application; decoding, alpha/color, target resizing and caching
 are separate M35 work.
+
+M35 adds an [inactive neural preparation/cache service](architecture/neural-image-preparation.md).
+It preserves Original/Lanczos defaults and adds no application, preview or export
+caller; subsequent adoption remains separately scoped.

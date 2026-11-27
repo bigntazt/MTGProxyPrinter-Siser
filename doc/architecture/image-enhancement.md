@@ -1,6 +1,6 @@
 # Optional image enhancement: M22 architecture decision
 
-**Current status (M34):** the normal main-page preview now optionally adopts the
+**Current status (M35):** the normal main-page preview now optionally adopts the
 accepted Original/Lanczos pipeline through an ephemeral dock. See
 [Main-page image preparation preview](prepared-image-preview.md). Printing, print
 preview and regular PDF/PNG retain their existing paths. An explicit
@@ -268,3 +268,12 @@ returns verified native RGB samples; no caller adopts it in the application.
 M35 will own the source/recipe/final-target/cache bridge; M36 batch/session adoption;
 M37 experimental UI and output qualification. Original/Lanczos and the existing
 600/900/1200-PPI targets remain the baseline. No neural default is selected.
+
+## M35: inactive neural source/recipe/cache bridge
+
+The [neural image preparer](neural-image-preparation.md) joins validated snapshots
+and plans, current M34 readiness, explicit RGB/alpha/final-resize policy and the
+existing final-target derivative cache. Sufficient sources return exact originals
+without optional work. No application caller adopts it. Original/Lanczos remain
+the baseline at 600/900/1200 PPI; M36 owns batch/session adoption and M37
+experimental UI/output qualification. No neural default or quality approval.
