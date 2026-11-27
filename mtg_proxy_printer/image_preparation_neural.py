@@ -122,7 +122,10 @@ class NeuralImagePreparer:
         except ProcessingFailure as error:
             return self._fallback(snapshot, plan, error.reason, error.detail)
         except NeuralWorkerError as error:
-            if error.reason in _OPTIONAL_FAILURES and error.reason != "worker_rejected":
+            report = error.cleanup_report or self.cleanup_report
+            # M34 publishes cleanup information after disposal, unlike an idle recoverable rejection.
+            if error.reason in _OPTIONAL_FAILURES and (error.reason != "worker_rejected" or report is not None):
+                error.cleanup_report = report
                 # Retain no exception traceback (which could own per-image buffers).
                 self._disabled = (error.reason, error.detail, error.cleanup_report)
                 if _unresolved(error.cleanup_report) or _unresolved(self.cleanup_report):
@@ -130,6 +133,8 @@ class NeuralImagePreparer:
                 try:
                     if self._session is not None:
                         self._session.close()
+                except NeuralWorkerCancelled as cancellation:
+                    self._cancel(cancellation)
                 except NeuralWorkerError as cleanup_error:
                     self._disabled = (cleanup_error.reason, cleanup_error.detail, cleanup_error.cleanup_report)
                     raise

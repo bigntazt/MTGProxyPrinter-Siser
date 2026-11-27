@@ -113,8 +113,12 @@ budget exhaustion preserve specific reasons/details (bounded to 4096 characters)
 Every fallback retains exact encoded source bytes/native format/dimensions and no
 derivative key; it is never stored as neural success.
 
-Recoverable per-image worker rejection and source-specific unsupported formats do
-not poison a healthy worker. Fatal provider failure or request-budget exhaustion
+Worker rejection is recoverable only while the session remains usable; it and
+source-specific unsupported formats do not poison a healthy worker. A rejection
+accompanied by a public session-disposal report disables neural use for the rest
+of the preparer lifetime, preserving the rejection fallback reason. Unresolved
+rejection cleanup still propagates rather than returning a fallback. Fatal provider
+failure or request-budget exhaustion
 disables neural use for that preparer's remaining lifetime, with no replacement
 session. Later insufficient requests fall back with the recorded reason; a new
 explicit preparer can retry. Sufficient-source calls still bypass optional work.
@@ -127,7 +131,11 @@ checked before/after validation and runtime/readiness, after lookup, around deco
 inference/final processing, immediately before/after store and before every return
 (including shortcut/hit/fallback). Cancellation outside an active M34 call closes
 the owned session and preserves cancellation as primary with cleanup details.
-A cancelled preparer does not restart, even if the Event is later cleared.
+Cancellation raised during failure cleanup follows the same terminal cancellation
+path, preserving the primary cancellation and cleanup information. A cancelled
+preparer does not restart, even if the Event is later cleared; both sufficient
+and insufficient requests remain cancelled. Explicit close retains the normal
+closed-object behavior.
 
 Known cancellation before store prevents that store. Cancellation during synchronous
 publication can leave a complete valid cache entry: return no result, preserve the

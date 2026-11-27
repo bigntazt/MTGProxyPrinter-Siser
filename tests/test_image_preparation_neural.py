@@ -269,6 +269,93 @@ def test_disabled_provider_does_not_retain_per_image_traceback_buffers(setup):
         gc.collect();assert refs[0]() is None
 
 
+@pytest.mark.parametrize('report_on_error',[True,False])
+def test_disposed_rejection_records_fallback_without_reusing_session(setup,report_on_error):
+    p=preparer(setup)
+    try:
+        prepare(p);session=setup[3][0];snapshot=source(patterned_image(2,3))
+        rejection=NeuralWorkerError('worker_rejected','rejected job cleanup failed; session disposed '+('x'*5000))
+        report=NeuralWorkerCleanup(1,0,True,True,True)
+        def rejected(*args):
+            session.cleanup_report=report
+            if report_on_error:rejection.cleanup_report=report
+            raise rejection
+        with patch.object(session,'infer',side_effect=rejected) as inference:
+            first=prepare(p,snapshot)
+            assert_original(first,snapshot,'worker_rejected')
+            assert first.detail==rejection.detail and len(first.detail)<=4096
+            sufficient=source(patterned_image(8,12))
+            with patch.object(session,'start',side_effect=AssertionError('disposed worker must not restart')) as start, \
+                 patch.object(DerivativeCache,'lookup',side_effect=AssertionError('disabled provider must not lookup')) as lookup, \
+                 patch.object(service,'NeuralWorkerSession',side_effect=AssertionError('no replacement session')):
+                assert_original(prepare(p,snapshot),snapshot,'worker_rejected')
+                assert_original(prepare(p,sufficient),sufficient,'source_sufficient','original')
+                start.assert_not_called();lookup.assert_not_called()
+            assert inference.call_count==1 and len(setup[3])==1
+    finally:p.close()
+
+
+@pytest.mark.parametrize('report_on_error',[True,False])
+def test_rejected_session_with_unresolved_cleanup_propagates_without_retrying(setup,report_on_error):
+    p=preparer(setup)
+    try:
+        prepare(p);session=setup[3][0];snapshot=source(patterned_image(2,3))
+        report=NeuralWorkerCleanup(1,None,False,False,False,('unresolved rejected-session cleanup',))
+        rejection=NeuralWorkerError('worker_rejected','rejection plus incomplete disposal')
+        def rejected(*args):
+            session.cleanup_report=report
+            if report_on_error:rejection.cleanup_report=report
+            raise rejection
+        with patch.object(session,'infer',side_effect=rejected):
+            with pytest.raises(NeuralWorkerError) as raised:prepare(p,snapshot)
+        assert raised.value is rejection and raised.value.cleanup_report is report
+        with patch.object(session,'start',side_effect=AssertionError('disposed worker must not restart')) as start, \
+             patch.object(DerivativeCache,'lookup',side_effect=AssertionError('no cache access')) as lookup, \
+             patch.object(service,'NeuralWorkerSession',side_effect=AssertionError('no replacement')):
+            with pytest.raises(NeuralWorkerError) as raised:prepare(p,snapshot)
+            assert raised.value.reason=='worker_rejected' and raised.value.cleanup_report is report
+            start.assert_not_called();lookup.assert_not_called()
+        assert len(setup[3])==1
+    finally:p.close()
+
+
+@pytest.mark.parametrize('retry_cleanup_fails',[False,True])
+def test_budget_failure_cleanup_cancellation_is_terminal_after_event_clear(setup,retry_cleanup_fails):
+    p=preparer(setup);event=setup[2]
+    try:
+        prepare(p);session=setup[3][0];snapshot=source(patterned_image(2,3))
+        report=NeuralWorkerCleanup(1,0,True,True,not retry_cleanup_fails,
+                                   ('temporary cleanup denied',) if retry_cleanup_fails else ())
+        cancellation=NeuralWorkerCancelled();cancellation.cleanup_report=report
+        retry_error=NeuralWorkerError('cleanup_failed','retry denied');retry_error.cleanup_report=report
+        closes=[]
+        def budget_guard(*args):
+            # Match M34: the idle budget guard precedes its operation cancellation check.
+            event.set()
+            raise NeuralWorkerError('request_budget','shutdown capacity reserved')
+        def close():
+            closes.append(True);session.cleanup_report=report
+            if len(closes)==1:raise cancellation
+            if retry_cleanup_fails:raise retry_error
+        with patch.object(session,'infer',side_effect=budget_guard) as inference,patch.object(session,'close',side_effect=close):
+            with pytest.raises(NeuralWorkerCancelled) as raised:prepare(p,snapshot)
+            assert raised.value is cancellation and raised.value.cleanup_report is report
+            if retry_cleanup_fails:assert raised.value.cleanup_error is retry_error
+            event.clear()
+            with patch.object(session,'start',side_effect=AssertionError('cancelled preparer cannot restart')) as start, \
+                 patch.object(DerivativeCache,'lookup',side_effect=AssertionError('cancelled preparer cannot lookup')) as lookup, \
+                 patch.object(processing,'discover_neural_runtime',side_effect=AssertionError('no optional discovery')), \
+                 patch.object(service,'NeuralWorkerSession',side_effect=AssertionError('no replacement worker')):
+                with pytest.raises(NeuralWorkerCancelled):prepare(p,source(patterned_image(8,12)))
+                with pytest.raises(NeuralWorkerCancelled):prepare(p,snapshot)
+                start.assert_not_called();lookup.assert_not_called()
+            assert inference.call_count==1 and len(closes)>=2 and len(setup[3])==1
+        p.close();p.close()
+        with pytest.raises(RuntimeError,match='closed'):prepare(p,snapshot)
+    finally:
+        event.clear();p.close()
+
+
 @pytest.mark.parametrize('canonical,expected',[((745,1040),[(1490,2080),(2235,3120),(2980,4160)]),
                                              ((1040,1490),[(2080,2980),(3120,4470),(4160,5960)])])
 def test_existing_physical_plans_are_exact_without_full_size_rendering(canonical,expected):
