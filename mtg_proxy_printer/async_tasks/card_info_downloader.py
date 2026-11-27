@@ -243,9 +243,7 @@ class StreamTask(CardInfoDownloadTaskBase):
         logger.debug(f"{self.__class__.__name__}: entering cancel()")
         self.cancelled.set()
         self._discard_pending()
-        stream = self.open_file
-        if stream is not None:
-            stream.close()
+        # The producer closes its decoder and transport after any in-flight read returns.
         logger.debug(f"{self.__class__.__name__}: Cancel completed")
 
 

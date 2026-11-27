@@ -420,3 +420,45 @@ def test__urlopen_includes_range_header_when_seeking_to_non_zero_pos(urlopen: Ma
         ))
     )
     urlopen.assert_called()
+
+
+@pytest.mark.parametrize("cancel_before_delay", [True, False])
+def test_cancellation_stops_connection_retry_delay(monkeypatch, cancel_before_delay):
+    import threading
+
+    cancelled, waiting = threading.Event(), threading.Event()
+    wait = cancelled.wait
+
+    def observe_delay(timeout):
+        waiting.set()
+        return wait(timeout)
+
+    def offline(request):
+        if cancel_before_delay:
+            cancelled.set()
+        raise urllib.error.URLError("offline")
+
+    acquire = MagicMock(side_effect=offline)
+    monkeypatch.setattr(urllib.request, "urlopen", acquire)
+    monkeypatch.setattr(cancelled, "wait", observe_delay)
+    errors = []
+
+    def connect():
+        try:
+            MeteredSeekableHTTPFile("https://fixture.invalid/cards.gz", cancelled=cancelled)
+        except InterruptedError as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=connect, daemon=True)
+    thread.start()
+    try:
+        if not cancel_before_delay:
+            assert waiting.wait(2)
+            cancelled.set()
+        thread.join(2)
+        assert not thread.is_alive()
+    finally:
+        cancelled.set()
+        thread.join(2)
+    assert len(errors) == 1 and waiting.is_set() == (not cancel_before_delay)
+    acquire.assert_called_once()

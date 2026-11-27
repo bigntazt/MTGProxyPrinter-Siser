@@ -15,7 +15,7 @@
 
 import json
 import gzip
-import typing
+from threading import Event
 
 import mtg_proxy_printer.http_file
 from mtg_proxy_printer.logger import get_logger
@@ -32,6 +32,8 @@ class DownloaderBase(AsyncTask):
     """
     Base class for classes that are able to download data from the Internet.
     """
+
+    cancelled: Event | None = None
 
     def read_from_url(self, url: str, ui_hint: str = ""):
         """
@@ -62,7 +64,8 @@ class DownloaderBase(AsyncTask):
             "Accept": "*/*",
             "Accept-Encoding": ", ".join(supported_encodings)
         }
-        response = mtg_proxy_printer.http_file.MeteredSeekableHTTPFile(url, headers, ui_hint=ui_hint)
+        response = mtg_proxy_printer.http_file.MeteredSeekableHTTPFile(
+            url, headers, ui_hint=ui_hint, cancelled=self.cancelled)
         if (response_code := response.getcode()) >= 300:
             raise RuntimeError(f"Error from server! Error code: {response_code}")
         if ui_hint:  # Without a display text for the UI, there is no meaningful progress report. So skip if not given

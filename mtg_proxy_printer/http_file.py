@@ -16,6 +16,7 @@
 from functools import cache
 import http.client
 import socket
+from threading import Event
 import time
 from typing import Callable, Literal
 import urllib.error
@@ -61,15 +62,17 @@ class MeteredSeekableHTTPFile(QObject):
     getcode: Callable[[], int]
 
     def __init__(self, url: str, headers: dict[str, str] | None = None, parent: QObject | None = None, *,
-                 ui_hint: str = "", retry_limit: int = 10):
+                 ui_hint: str = "", retry_limit: int = 10, cancelled: Event | None = None):
         """
         :param url: The URL to fetch
         :param headers: A dict containing HTTP header key/value pairs.
         :param parent: parent QObject
         :param ui_hint: Carried verbatim by the io_begin signal. A connected progress meter UI can use this as display text.
         :param retry_limit: The downloader will re-establish the connection this many times before failing
+        :param cancelled: Optional event that stops retry requests and interrupts retry delays.
         """
         super().__init__(parent)
+        self.cancelled = cancelled
         self.retry_limit = retry_limit
         self.ui_hint = ui_hint
         self.url = url
@@ -127,12 +130,17 @@ class MeteredSeekableHTTPFile(QObject):
             self.file = self._urlopen(self._pos)
         return self.tell()
 
+    def _check_cancelled(self):
+        if self.cancelled is not None and self.cancelled.is_set():
+            raise InterruptedError("HTTP transfer cancelled")
+
     def read(self, amt: int | None = None, /) -> bytes:
         if self.closed:
             logger.error(msg := "I/O operation on closed file.")
             raise ValueError(msg)
         last_error = None
         for retry in range(self.retry_limit or 1):
+            self._check_cancelled()
             try:
                 buffer = self.file.read(amt)
                 buffer_length = len(buffer)
@@ -166,6 +174,7 @@ class MeteredSeekableHTTPFile(QObject):
             raise ValueError(msg)
         last_error = None
         for retry in range(self.retry_limit or 1):
+            self._check_cancelled()
             try:
                 buffer_length = self.file.readinto(buffer)
             except (ConnectionAbortedError, socket.timeout) as e:
@@ -218,6 +227,7 @@ class MeteredSeekableHTTPFile(QObject):
         request = urllib.request.Request(self.url, headers=headers)
         last_error = None
         for retry in range(outer_retries, self.retry_limit or 1):
+            self._check_cancelled()
             try:
                 response: http.client.HTTPResponse = urllib.request.urlopen(request)
             except urllib.error.HTTPError as e:
@@ -230,7 +240,11 @@ class MeteredSeekableHTTPFile(QObject):
                 if self.closed:
                     # Do not sleep, if this instance was closed externally. Just break in that case.
                     break
-                time.sleep(5)
+                if self.cancelled is None:
+                    time.sleep(5)
+                else:
+                    self._check_cancelled()
+                    self.cancelled.wait(5)
                 last_error = e
             else:
                 return response

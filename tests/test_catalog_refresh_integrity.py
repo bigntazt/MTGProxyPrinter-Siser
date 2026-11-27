@@ -395,3 +395,86 @@ def test_cancel_before_first_batch(card_db, monkeypatch, order):
     task.run()
     assert db.execute("SELECT COUNT(*) FROM Printing").fetchone() == (2,)
     assert db.execute("SELECT COUNT(*) FROM LastDatabaseUpdate").fetchone() == (2,)
+
+
+@pytest.mark.parametrize("fault", ["timeout", "early-eof"])
+@pytest.mark.parametrize("cancel", [True, False])
+def test_gzip_retry_during_catalog_import(card_db, monkeypatch, fault, cancel):
+    import gzip
+    import http.client
+    import urllib.request
+    from PySide6.QtCore import Qt
+
+    seed = load_json("regular_english_card")
+    fill_card_database_with_json_card(card_db, seed)
+    db = card_db.db
+    db.row_factory = None
+    before = list(db.iterdump())
+    new_card = dict(seed, id=str(UUID(int=123)))
+    compressed = gzip.compress(json.dumps(new_card).encode() + b"\n")
+    headers = f"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: {len(compressed)}\r\n\r\n".encode()
+    reached, release = threading.Event(), threading.Event()
+    responses, bodies, reads = [], [], []
+
+    def acquire(request):
+        attempt = len(responses) + 1
+
+        class Body(io.BytesIO):
+            def read(self, *args):
+                reads.append(attempt)
+                if attempt == 1:
+                    reached.set()
+                    assert release.wait(8)
+                    if fault == "timeout":
+                        raise TimeoutError("offline socket timeout")
+                return super().read(*args)
+
+        payload = compressed[:1] if attempt == 1 and fault == "early-eof" else compressed
+        body = Body(headers + payload)
+        sock = MagicMock()
+        sock.makefile.return_value = body
+        response = http.client.HTTPResponse(sock)
+        response.begin()
+        bodies.append(body)
+        responses.append(response)
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", acquire)
+    source = download.ApiStreamTask("https://fixture.invalid/cards.gz")
+    monkeypatch.setattr(source, "read_json_from_url", lambda url: {} if cancel else {"total_cards": 1})
+    monkeypatch.setattr(download.SetDataImportTask, "run", lambda self: None)
+    importer = download.DatabaseImportTask(source, db, ":memory:")
+    errors, done = [], []
+    importer.error_occurred.connect(errors.append, Qt.ConnectionType.DirectConnection)
+    for name, job in (("producer", source), ("importer", importer)):
+        job.task_completed.connect(lambda n=name: done.append(n), Qt.ConnectionType.DirectConnection)
+    producer = threading.Thread(target=source.run, daemon=True)
+    consumer = threading.Thread(target=importer.run, daemon=True)
+    producer.start()
+    try:
+        assert reached.wait(3)
+        decoder = source.open_file
+        consumer.start()
+        if cancel:
+            assert source.cancelled.wait(3)
+            consumer.join(3)
+            assert not consumer.is_alive() and len(errors) == 1 and "total_cards" in errors[0]
+            assert done == ["importer"] and producer.is_alive()
+    finally:
+        release.set()
+        producer.join(5)
+        if consumer.ident is not None:
+            consumer.join(5)
+
+    assert not producer.is_alive() and not consumer.is_alive()
+    assert sorted(done) == ["importer", "producer"] and source.queue.empty()
+    assert decoder.closed and source.open_file is None
+    assert all(response.closed for response in responses) and all(body.closed for body in bodies)
+    assert not db.in_transaction
+    if cancel:
+        assert len(responses) == 1 and reads == [1]
+        assert list(db.iterdump()) == before
+    else:
+        assert len(responses) == 2 and 2 in reads and not errors
+        assert db.execute("SELECT COUNT(*) FROM Printing WHERE scryfall_id=?", (new_card["id"],)).fetchone() == (1,)
+        assert db.execute("SELECT COUNT(*) FROM LastDatabaseUpdate").fetchone() == (2,)
