@@ -94,15 +94,15 @@ def validated_truth(sample, corpus_directory):
     truth = (corpus_directory / sample["truth_file"]).resolve()
     if not truth.is_file():
         raise ValueError(f"Missing declared truth image for {sample['id']}: {truth.name}")
-    actual = sha256(truth)
+    captured = truth.read_bytes()
+    actual = hashlib.sha256(captured).hexdigest()
     if actual != expected.lower():
         raise ValueError(f"Truth hash mismatch for {sample['id']}: expected {expected.lower()}, got {actual}")
     try:
-        decoded, _ = load_image(truth)
-        decoded.close()
+        decoded, _ = load_image(io.BytesIO(captured))
     except (OSError, ValueError, SyntaxError) as error:
         raise ValueError(f"Invalid declared truth image for {sample['id']}: {error}") from error
-    return truth, actual
+    return decoded, actual
 
 
 def write_json(path, value):
@@ -282,10 +282,9 @@ def infer_native(descriptor, image, repeats, first_after_load):
                     "transfer_quantize_seconds": transfer_quantize, "tensor_range": [low, high]}
 
 
-def metric_psnr(image, truth_path):
-    if not truth_path or image.mode == "RGBA":
+def metric_psnr(image, truth):
+    if truth is None or image.mode == "RGBA":
         return None
-    truth, _ = load_image(truth_path)
     reference = truth.convert("RGB").resize(image.size, Image.Resampling.LANCZOS)
     a = np.asarray(image.convert("RGB"), dtype=np.float32)
     b = np.asarray(reference, dtype=np.float32)
@@ -368,10 +367,12 @@ def run(args):
         with gpu_lock(args.models_dir) if neural else contextlib.nullcontext():
             for sample in samples:
                 source = (corpus_path.parent / sample["file"]).resolve()
-                actual_hash = sha256(source)
+                captured = source.read_bytes()
+                actual_hash = hashlib.sha256(captured).hexdigest()
                 if actual_hash != sample["sha256"]:
                     raise ValueError(f"Source hash mismatch: {sample['id']}")
-                image, image_info = load_image(source)
+                image, image_info = load_image(io.BytesIO(captured))
+                del captured
                 truth, truth_hash = validated_truth(sample, corpus_path.parent)
                 common = {"sample_id": sample["id"], "face": sample["face"],
                           "card_type": sample["card_type"], "source_sha256": actual_hash,
@@ -402,9 +403,10 @@ def run(args):
                     if neural and not decision and load_error:
                         # Reject this request without overwriting an older valid success.
                         raise ValueError(f"{candidate}: {load_error}")
+                    index_entry = {"sample_id": sample["id"], "face": sample["face"], "record": str(final_path)}
                     cached_final = reusable(final_path, recipe) if decision is None else None
                     if cached_final:
-                        run_index.append({"record": str(final_path), "reused": True})
+                        run_index.append({**index_entry, "reused": True})
                         print(f"REUSED {candidate} {sample['id']} {ppi}", flush=True)
                         continue
                     if decision:
@@ -484,7 +486,7 @@ def run(args):
                             write_json(final_path, {**common_target, "recipe": recipe, "recipe_id": identity(recipe),
                                                     "method": candidate, "status": native_record["status"],
                                                     "error": native_record["error"], "native_record_id": native_record["recipe_id"]})
-                    run_index.append({"record": str(final_path), "reused": False})
+                    run_index.append({**index_entry, "reused": False})
                     record = read_json(final_path)
                     print(f"{record['status'].upper()} {candidate} {sample['id']} {ppi}", flush=True)
                 del image, native_image

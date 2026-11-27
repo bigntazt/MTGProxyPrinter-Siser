@@ -93,15 +93,24 @@ def report(args):
     corpus_path = Path(args.corpus).resolve()
     corpus = bench.read_json(corpus_path)
     samples = {s["id"]: s for s in corpus["samples"]}
-    record_paths = ([row["record"] for row in bench.read_json(args.index)["records"]]
-                    if args.index else sorted((results / "records").glob("*.json")))
-    records = [bench.read_json(p) for p in record_paths]
+    index = Path(args.index) if args.index else results / "run-index.json"
+    entries = bench.read_json(index)["records"] if index.is_file() or args.index else []
+    if not args.index:
+        indexed = {Path(entry["record"]).resolve() for entry in entries}
+        entries.extend({"record": path} for path in sorted((results / "records").glob("*.json"))
+                       if path.resolve() not in indexed)
+    records = []
+    for entry in entries:
+        record = bench.read_json(entry["record"])
+        if "sample_id" in entry:
+            record.update(sample_id=entry["sample_id"], face=entry["face"])
+        records.append(record)
     # Every successful result must still decode and match its hash before inclusion.
     for record in records:
         if record["status"] == "success" and not bench.validate_output(
                 record["output"], record["final_dimensions"], record["output_sha256"]):
             raise ValueError("A success record no longer validates; refusing misleading report")
-    fields = ["sample_id", "method", "target_ppi", "status", "source_dimensions",
+    fields = ["sample_id", "face", "method", "target_ppi", "status", "source_dimensions",
               "native_scale", "native_output_dimensions", "final_dimensions", "load_seconds",
               "warm_median_seconds", "peak_allocated_mib", "peak_reserved_mib",
               "final_resize_seconds", "encoding_validation_seconds", "output_bytes", "rgb_psnr_db", "reason"]
@@ -151,6 +160,7 @@ def report(args):
             draw = ImageDraw.Draw(sheet)
             for i, record in enumerate(selected):
                 x = i*cw
+                draw.text((x+5, ch-28), f"{sample_id} / {record['face']}", fill="black", font=font)
                 label = record["method"]
                 draw.text((x+5, 4), label, fill="black", font=font)
                 draw.text((x+5, 26), str(ppi) + " PPI / " + record.get("recipe_label", "control")[:30],
@@ -173,15 +183,15 @@ def report(args):
                     sheet.paste(flatten(crop), (x+5, y))
             name = f"{sample_id}-{ppi}-comparison.png"
             sheet.save(output / name)
-            preview_rows.append((sample_id, ppi, name))
+            preview_rows.append((sample_id, selected[0]['face'], ppi, name))
     body = ["<html><head><meta charset='utf-8'><title>M22 local review</title></head><body>",
             "<h1>M22 private local comparisons</h1>",
             "<p>Not a print proof. Whole cards are thumbnails; crop panels retain 1:1 target pixels. "
             "Original crop display uses nearest expansion only. Full-resolution PNGs remain in results/images. "
             "No physical print quality is claimed.</p>",
             "<p><a href='results.csv'>Detailed results</a> | <a href='aggregate.json'>Aggregate</a></p>"]
-    for sample_id, ppi, name in preview_rows:
-        body.append(f"<h2>{html.escape(sample_id)} / {ppi} PPI</h2><a href='{name}'><img src='{name}' style='max-width:100%'></a>")
+    for sample_id, face, ppi, name in preview_rows:
+        body.append(f"<h2>{html.escape(sample_id)} / {html.escape(face)} / {ppi} PPI</h2><a href='{name}'><img src='{name}' style='max-width:100%'></a>")
     body.append("</body></html>")
     (output / "index.html").write_text("\n".join(body), encoding="utf-8")
     print(json.dumps(groups, indent=2))

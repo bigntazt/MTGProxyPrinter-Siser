@@ -344,6 +344,61 @@ class ReuseRegressionTests(unittest.TestCase):
         self.assertEqual(len(list((self.output / "native-records").glob("*.json"))), 1)
         self.no_gpu.assert_not_called()
 
+    def test_replacement_between_hash_and_decode_cannot_poison_resume(self):
+        original_source = self.source.read_bytes()
+        original_truth = self.truth.read_bytes()
+        decode = bench.load_image
+        changed = set()
+
+        def replace_before_decode(value):
+            path = self.source if not changed else self.truth
+            if path not in changed:
+                changed.add(path)
+                Image.new("RGB", (10, 15), "red" if path == self.source else "blue").save(path)
+            return decode(value)
+
+        with patch.object(bench, "load_image", side_effect=replace_before_decode):
+            first, _, _ = self.run_fixture()
+        self.assertEqual(changed, {self.source, self.truth})
+        self.source.write_bytes(original_source)
+        self.truth.write_bytes(original_truth)
+        resumed, _, reused = self.run_fixture()
+        self.assertTrue(reused)
+        self.assertEqual(first, resumed)
+        with Image.open(resumed["output"]) as image:
+            self.assertEqual(image.getpixel((0, 0)), (50, 50, 50))
+        self.assertEqual(resumed["quality_against_synthetic_truth"]["rgb_mae"], 0)
+
+    def test_shared_content_keeps_both_report_labels(self):
+        import csv
+        import sys
+        from argparse import Namespace
+        spec = importlib.util.spec_from_file_location("review", ROOT / "scripts" / "enhancement_review.py")
+        review = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, enhancement_benchmark=bench):
+            spec.loader.exec_module(review)
+        back = dict(self.sample, id="second", face="back")
+        bench.write_json(self.corpus, {"samples": [self.sample, back]})
+        bench.run(self.args)
+        path = self.output / "run-index.json"
+        entries = bench.read_json(path)["records"]
+        self.assertEqual([(e["sample_id"], e["face"]) for e in entries],
+                         [("fixture", "synthetic-front"), ("second", "back")])
+        self.assertEqual(entries[0]["record"], entries[1]["record"])
+        self.assertTrue(entries[1]["reused"])
+        report = self.root / "report"
+        review.report(Namespace(results=self.output, output=report, corpus=self.corpus,
+                                index=path, samples="fixture,second"))
+        with (report / "results.csv").open(newline="") as stream:
+            self.assertEqual([(r["sample_id"], r["face"]) for r in csv.DictReader(stream)],
+                             [("fixture", "synthetic-front"), ("second", "back")])
+        html = (report / "index.html").read_text(encoding="utf-8")
+        sheets = []
+        for sample in (self.sample, back):
+            self.assertIn(f"{sample['id']} / {sample['face']}", html)
+            sheets.append((report / (sample["id"] + "-600-comparison.png")).read_bytes())
+        self.assertNotEqual(*sheets)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
