@@ -117,7 +117,7 @@ def test_unavailable_all_fallback_and_same_ppi_configuration_retry(preview, setu
     status = neural_ready(h, setup[0])
     assert dict(status.completion.outcome_counts) == {"fallback_original": 2}
     assert "Original fallback: 2" in h.dock.details_text.toPlainText()
-    assert "test provider missing" in h.dock.details_text.toPlainText()
+    assert "provider is unavailable" in h.dock.details_text.toPlainText()
     assert h.window.ui.action_export_prepared_page_pdf.isEnabled()
     first = status.generation
     monkeypatch.setattr(neural.processor, "discover_neural_runtime", original)
@@ -188,7 +188,7 @@ def test_mixed_neural_page_counts_sufficient_fallback_generated_and_standard(pre
                                                     "generated_cached": 1, "standard": 1}
     text = h.dock.details_text.toPlainText()
     assert "Source-sufficient originals: 1" in text and "Original fallback: 2" in text
-    assert "test healthy rejection" in text and "Standard preview: 1" in text
+    assert "worker rejected this image" in text and "Standard preview: 1" in text
 
 
 def test_neural_cancel_then_explicit_refresh_and_terminal_error_detail(preview, setup, monkeypatch):
@@ -207,7 +207,7 @@ def test_neural_cancel_then_explicit_refresh_and_terminal_error_detail(preview, 
     h.dock.refresh_button.click(); assert h.ready().completion.mode == "neural"
     monkeypatch.setattr(neural.NeuralImagePreparer, "prepare", lambda *args: (_ for _ in ()).throw(ValueError("test terminal defect")))
     h.dock.refresh_button.click(); h.qtbot.waitUntil(lambda: h.session.status().phase == "failed")
-    assert "test terminal defect" in h.dock.details_text.toPlainText()
+    assert "See the private log" in h.dock.details_text.toPlainText()
 
 
 def test_worker_paths_are_not_carried_into_captured_metadata(preview, setup, monkeypatch):
@@ -220,7 +220,7 @@ def test_worker_paths_are_not_carried_into_captured_metadata(preview, setup, mon
     neural_ready(h, config)
     result = pdf.capture_prepared_page_pdf(h.document, h.session, mode='neural', target_ppi=600)
     text = '\n'.join(d.detail for d in result.diagnostics)
-    assert 'Cannot open' in text
+    assert 'provider is unavailable' in text
     assert result.diagnostics and all(d.reason == 'provider_unavailable' for d in result.diagnostics)
     private_paths = (config.interpreter, config.worker_script, config.checkpoint,
                      config.private_parent, config.worker_script.parent)
@@ -239,3 +239,44 @@ def test_missing_bundle_is_checked_by_real_client_off_gui_and_can_fallback(previ
     result = pdf.capture_prepared_page_pdf(h.document, h.session, mode='neural', target_ppi=600)
     assert image_sizes(PdfReader(BytesIO(result.data)).pages[0]) == {(5, 7)}
     assert all(str(setup[0].worker_script.parent) not in d.detail for d in result.diagnostics)
+
+
+@pytest.mark.parametrize("missing_worker", [False, True])
+def test_public_fallback_surfaces(preview, setup, monkeypatch, missing_worker, caplog):
+    from mtg_proxy_printer.image_processing_pillow import ProcessingFailure
+    from mtg_proxy_printer.model.document_page import PageColumns
+    from mtg_proxy_printer.neural_worker_client import NeuralWorkerSession
+
+    h = preview
+    h.add(encoded(5, 7))
+    config = setup[0]
+    if missing_worker:
+        monkeypatch.setattr(neural, "NeuralWorkerSession", NeuralWorkerSession)
+        reason, explanation = "worker_unavailable", "worker"
+    else:
+        # POSIX-spelled, normalized exception path on any host.
+        import posixpath
+        entered = "/private/normalized/entered/../worker assets/checkpoint"
+        config = replace(config, checkpoint=Path(entered).absolute())
+        detail = f"Cannot open '{posixpath.normpath(entered)}'"
+        monkeypatch.setattr(neural.processor, "discover_neural_runtime", lambda: (_ for _ in ()).throw(
+            ProcessingFailure("provider_unavailable", detail)))
+        reason, explanation = "provider_unavailable", "provider"
+    status = neural_ready(h, config)
+    idx = h.document.index(0, PageColumns.Image, h.document.get_current_page_index())
+    raster = h.session.resolve(idx)
+    assert raster.reason == reason and raster.actual_dimensions == (5, 7)
+    assert status.diagnostics and all(d.reason == reason for d in status.diagnostics)
+    surfaces = [raster.detail, *(d.detail for d in status.diagnostics), h.dock.details_text.toPlainText()]
+    for action in (h.window.ui.action_export_prepared_page_pdf, h.window._prepared_png_actions[0]):
+        assert action.isEnabled()
+        action.trigger()
+        dialog = h.window.current_dialog
+        surfaces.append(dialog.ui.summary_text.toPlainText())
+        dialog.reject()
+    for surface in surfaces:
+        assert explanation in surface.lower()
+        assert "/private/normalized" not in surface
+        assert config.private_parent.name.lower() not in surface.lower()
+    if not missing_worker:
+        assert detail in caplog.text

@@ -2,7 +2,6 @@
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-import re
 
 from PySide6.QtCore import QObject, QModelIndex, QPersistentModelIndex, QTimer, Qt, Signal, Slot
 
@@ -122,24 +121,24 @@ def _card_metadata(card):
     return ImageKey(str(card.scryfall_id), card.is_front, ImageQuality.of_card(card)), dimensions
 
 
-def _public_worker_detail(detail, config):
-    """Keep OS-spelled worker paths private without probing the filesystem."""
-    if config is None:
-        return detail
+def _public_worker_detail(reason, detail):
     if detail:
-        logger.debug("Neural preparation operational detail: %s", detail)
-    # OS errors may canonicalize case/.. and append an owned child directory.
-    # Strip the complete absolute Windows filename, not just the entered prefix.
-    detail = re.sub(r"""(?i)(['"])(?:[a-z]:[\\/]|\\\\)[^\r\n]*?\1""", "<private path>", detail)
-    # A truncated or unquoted path has no reliable end when spaces are allowed.
-    detail = re.sub(r"(?i)(?:\b[a-z]:[\\/]|\\\\)[^\r\n]*", "<private path>", detail)
-    locations = [(config.interpreter, "<worker Python>"), (config.worker_script, "<worker.py>"),
-                 (config.worker_script.parent, "<worker bundle>"), (config.checkpoint, "<checkpoint>"),
-                 (config.private_parent, "<private work directory>")]
-    for path, label in sorted(locations, key=lambda item: len(str(item[0])), reverse=True):
-        for value in (str(path), path.as_posix(), str(path).replace("\\", "\\\\")):
-            detail = detail.replace(value, label)
-    return detail[:4096]
+        logger.debug("Neural preparation operational detail (%s): %s", reason, detail)
+    explanations = {
+        "provider_unavailable": "The neural preparation provider is unavailable. Check the provider installation.",
+        "worker_unavailable": "The neural worker is unavailable. Check the worker setup.",
+        "worker_rejected": "The neural worker rejected this image.",
+        "protocol_error": "The worker returned an invalid response.",
+        "result_integrity": "The worker result failed validation.",
+        "timeout": "The worker did not respond before the deadline.",
+        "request_budget": "The worker reached its request limit.",
+        "worker_input_limit": "The image exceeds the worker input limit.",
+        "cache_write_failed": "The prepared image could not be cached.",
+        "invalid_generated_png": "The generated image could not be decoded.",
+        "preview_memory_limit": "The preview exceeds its memory limit.",
+        "missing_file": "The original image is unavailable.",
+    }
+    return explanations.get(reason, "Image preparation failed. See the private log for details.")
 
 
 class PreparedPageSession(QObject):
@@ -396,6 +395,9 @@ class PreparedPageSession(QObject):
                     or prepared.target_ppi != batch.request.target_ppi):
                 raise ValueError("Prepared result does not match the captured request")
             value = self._decode_with_budget(prepared, batch)
+            if batch.request.mode == "neural" and (isinstance(value, RasterDecodeFailure)
+                                                   or value.outcome in ("fallback_original", "generated_uncached")):
+                value = replace(value, detail=_public_worker_detail(value.reason, value.detail))
             batch.results[event.result_id] = value
             batch.result_keys[event.result_id] = next(iter(keys))
             if isinstance(value, RasterDecodeFailure):
@@ -409,8 +411,10 @@ class PreparedPageSession(QObject):
             if keys != {batch.result_keys[event.result_id]}:
                 raise ValueError("Alias does not match its captured source identity")
         elif isinstance(event, UnavailableResult):
-            batch.diagnostics.append(SessionDiagnostic(
-                self._generation, event.unavailable.reason, event.unavailable.detail, ids, batch_id))
+            reason, detail = event.unavailable.reason, event.unavailable.detail
+            if batch.request.mode == 'neural':
+                detail = _public_worker_detail(reason, detail)
+            batch.diagnostics.append(SessionDiagnostic(self._generation, reason, detail, ids, batch_id))
         else:
             raise TypeError("Unexpected preparation event")
         for i in ids:
@@ -496,10 +500,8 @@ class PreparedPageSession(QObject):
         diagnostics = tuple(replace(d, occurrence_ids=tuple(aliases[batch.assignments[d.occurrence_ids[0]]]))
                             if d.occurrence_ids and batch.assignments.get(d.occurrence_ids[0]) is not None else d
                             for d in batch.diagnostics)
-        if batch.request.mode == "neural":
-            diagnostics = tuple(replace(d, detail=_public_worker_detail(d.detail, batch.request.worker_config))
-                                for d in diagnostics)
-            summary = replace(summary, error_detail=_public_worker_detail(summary.error_detail, batch.request.worker_config))
+        if batch.request.mode == "neural" and summary.error_detail:
+            summary = replace(summary, error_detail=_public_worker_detail("batch_failed", summary.error_detail))
         published_count = 0
         counts = Counter()
         if summary.status == "completed" and self._current(batch):
